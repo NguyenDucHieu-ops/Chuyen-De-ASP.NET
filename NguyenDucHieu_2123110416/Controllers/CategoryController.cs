@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+using NguyenDucHieu_2123110416.Models;
 
 namespace NguyenDucHieu_2123110416.Controllers
 {
@@ -8,36 +7,64 @@ namespace NguyenDucHieu_2123110416.Controllers
     [ApiController]
     public class CategoryController : ControllerBase
     {
-        // GET: api/<CategoryController>
+        // Tạo một danh sách tĩnh (static) để lưu dữ liệu tạm vào RAM
+        private static List<Category> categories = new List<Category>
+        {
+            new Category { Id = 1, Name = "Laptop" },
+            new Category { Id = 2, Name = "Điện thoại" }
+        };
+
+        // 1. LẤY DANH SÁCH (GET)
         [HttpGet]
-        public IEnumerable<string> Get()
+        public IActionResult GetAll()
         {
-            return new string[] { "value1", "value2" };
+            return Ok(categories);
         }
 
-        // GET api/<CategoryController>/5
+        // 2. LẤY THEO ID (GET)
         [HttpGet("{id}")]
-        public string Get(int id)
+        public IActionResult GetById(int id)
         {
-            return "value";
+            var category = categories.FirstOrDefault(c => c.Id == id);
+            if (category == null)
+                return NotFound("Không tìm thấy danh mục này!");
+
+            return Ok(category);
         }
 
-        // POST api/<CategoryController>
+        // 3. THÊM MỚI (POST)
         [HttpPost]
-        public void Post([FromBody] string value)
+        public IActionResult Create(Category newCategory)
         {
+            // Tự động tăng ID
+            newCategory.Id = categories.Any() ? categories.Max(c => c.Id) + 1 : 1;
+            categories.Add(newCategory);
+
+            return Ok(newCategory);
         }
 
-        // PUT api/<CategoryController>/5
+        // 4. SỬA (PUT)
         [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
+        public IActionResult Update(int id, Category updatedCategory)
         {
+            var category = categories.FirstOrDefault(c => c.Id == id);
+            if (category == null)
+                return NotFound("Không tìm thấy danh mục để sửa!");
+
+            category.Name = updatedCategory.Name; // Cập nhật tên mới
+            return Ok(category);
         }
 
-        // DELETE api/<CategoryController>/5
+        // 5. XÓA (DELETE)
         [HttpDelete("{id}")]
-        public void Delete(int id)
+        public IActionResult Delete(int id)
         {
+            var category = categories.FirstOrDefault(c => c.Id == id);
+            if (category == null)
+                return NotFound("Không tìm thấy danh mục để xóa!");
+
+            categories.Remove(category);
+            return Ok("Đã xóa thành công!");
         }
     }
 }
