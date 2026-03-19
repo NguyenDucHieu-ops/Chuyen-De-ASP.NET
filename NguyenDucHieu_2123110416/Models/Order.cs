@@ -12,6 +12,12 @@ namespace NguyenDucHieu_2123110416.Models
         [ForeignKey("UserId")]
         public User User { get; set; }
 
+        // --- 2 DÒNG MỚI THÊM VÀO ĐỂ NỐI BẢNG VOUCHER ---
+        public int? VoucherId { get; set; }
+        [ForeignKey("VoucherId")]
+        public Voucher? Voucher { get; set; }
+        // ----------------------------------------------
+
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; }
 
