@@ -7,8 +7,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 2. Thêm Controllers và Swagger
-builder.Services.AddControllers();
+// 2. Thêm Controllers và Swagger kèm cấu hình bỏ qua Validate Navigation Properties
+builder.Services.AddControllers(options =>
+{
+    // Tắt tính năng tự động bắt lỗi các object liên kết (như Category trong Product)
+    options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

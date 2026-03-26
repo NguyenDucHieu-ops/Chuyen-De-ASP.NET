@@ -11,26 +11,15 @@ namespace NguyenDucHieu_2123110416.Controllers
     {
         private readonly AppDbContext _context;
 
-        public OrdersController(AppDbContext context)
-        {
-            _context = context;
-        }
+        public OrdersController(AppDbContext context) { _context = context; }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
-        {
-            // Lấy hóa đơn kèm theo thông tin User
-            return await _context.Orders.Include(o => o.User).ToListAsync();
-        }
+        public async Task<ActionResult<IEnumerable<Order>>> GetOrders() => await _context.Orders.Include(o => o.User).ToListAsync();
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Order>> GetOrder(int id)
         {
-            var order = await _context.Orders
-                                      .Include(o => o.User)
-                                      .Include(o => o.OrderDetails) // Lấy luôn danh sách món trong hóa đơn
-                                      .FirstOrDefaultAsync(o => o.Id == id);
-
+            var order = await _context.Orders.Include(o => o.User).Include(o => o.OrderDetails).FirstOrDefaultAsync(o => o.Id == id);
             if (order == null) return NotFound();
             return order;
         }
@@ -46,19 +35,9 @@ namespace NguyenDucHieu_2123110416.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutOrder(int id, Order order)
         {
-            if (id != order.Id) return BadRequest();
-
+            if (id != order.Id) return BadRequest("ID không khớp!");
             _context.Entry(order).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!OrderExists(id)) return NotFound();
-                else throw;
-            }
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 
@@ -67,15 +46,22 @@ namespace NguyenDucHieu_2123110416.Controllers
         {
             var order = await _context.Orders.FindAsync(id);
             if (order == null) return NotFound();
-
             _context.Orders.Remove(order);
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        private bool OrderExists(int id)
+        [HttpDelete("multiple")]
+        public async Task<IActionResult> DeleteMultipleOrders([FromQuery] string ids)
         {
-            return _context.Orders.Any(e => e.Id == id);
+            if (string.IsNullOrWhiteSpace(ids)) return BadRequest("Vui lòng nhập danh sách ID!");
+            var idList = ids.Split(',').Select(i => i.Trim()).Where(i => int.TryParse(i, out _)).Select(int.Parse).ToList();
+            var listToDelete = await _context.Orders.Where(x => idList.Contains(x.Id)).ToListAsync();
+            if (!listToDelete.Any()) return NotFound("Không tìm thấy dữ liệu để xóa!");
+
+            _context.Orders.RemoveRange(listToDelete);
+            await _context.SaveChangesAsync();
+            return Ok(new { message = $"Đã xóa thành công {listToDelete.Count} hóa đơn!" });
         }
     }
 }

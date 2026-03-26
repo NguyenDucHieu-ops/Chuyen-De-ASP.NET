@@ -17,10 +17,7 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Topping>>> GetToppings()
-        {
-            return await _context.Toppings.ToListAsync();
-        }
+        public async Task<ActionResult<IEnumerable<Topping>>> GetToppings() => await _context.Toppings.ToListAsync();
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Topping>> GetTopping(int id)
@@ -41,19 +38,9 @@ namespace NguyenDucHieu_2123110416.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutTopping(int id, Topping topping)
         {
-            if (id != topping.Id) return BadRequest();
-
+            if (id != topping.Id) return BadRequest("ID không khớp");
             _context.Entry(topping).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ToppingExists(id)) return NotFound();
-                else throw;
-            }
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 
@@ -62,15 +49,22 @@ namespace NguyenDucHieu_2123110416.Controllers
         {
             var topping = await _context.Toppings.FindAsync(id);
             if (topping == null) return NotFound();
-
             _context.Toppings.Remove(topping);
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        private bool ToppingExists(int id)
+        [HttpDelete("multiple")]
+        public async Task<IActionResult> DeleteMultipleToppings([FromQuery] string ids)
         {
-            return _context.Toppings.Any(e => e.Id == id);
+            if (string.IsNullOrWhiteSpace(ids)) return BadRequest("Vui lòng nhập danh sách ID!");
+            var idList = ids.Split(',').Select(i => i.Trim()).Where(i => int.TryParse(i, out _)).Select(int.Parse).ToList();
+            var toppingsToDelete = await _context.Toppings.Where(t => idList.Contains(t.Id)).ToListAsync();
+            if (!toppingsToDelete.Any()) return NotFound("Không tìm thấy topping nào để xóa!");
+
+            _context.Toppings.RemoveRange(toppingsToDelete);
+            await _context.SaveChangesAsync();
+            return Ok(new { message = $"Đã xóa thành công {toppingsToDelete.Count} topping!" });
         }
     }
 }

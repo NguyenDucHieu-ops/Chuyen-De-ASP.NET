@@ -16,87 +16,72 @@ namespace NguyenDucHieu_2123110416.Controllers
             _context = context;
         }
 
-        //  LẤY DANH SÁCH (GET: api/Products)
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
         {
-            // Dùng Include() để hệ thống JOIN bảng Category, lấy luôn tên danh mục ra thay vì chỉ hiện mỗi số CategoryId
             return await _context.Products.Include(p => p.Category).ToListAsync();
         }
 
-        // LẤY CHI TIẾT 1 DÒNG (GET: api/Products/5)
         [HttpGet("{id}")]
         public async Task<ActionResult<Product>> GetProduct(int id)
         {
-            var product = await _context.Products
-                                        .Include(p => p.Category)
-                                        .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (product == null)
-            {
-                return NotFound();
-            }
-
+            var product = await _context.Products.Include(p => p.Category).FirstOrDefaultAsync(p => p.Id == id);
+            if (product == null) return NotFound();
             return product;
         }
 
-        //  THÊM MỚI (POST: api/Products)
         [HttpPost]
         public async Task<ActionResult<Product>> PostProduct(Product product)
         {
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
-
             return CreatedAtAction("GetProduct", new { id = product.Id }, product);
         }
 
-        //  CẬP NHẬT (PUT: api/Products/5)
         [HttpPut("{id}")]
         public async Task<IActionResult> PutProduct(int id, Product product)
         {
-            if (id != product.Id)
-            {
-                return BadRequest();
-            }
+            if (id != product.Id) return BadRequest("ID không khớp!");
 
             _context.Entry(product).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ProductExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                    throw;
-            }
-
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        // XÓA (DELETE: api/Products/5)
+        // XÓA 1 DÒNG
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
             var product = await _context.Products.FindAsync(id);
-            if (product == null)
-            {
-                return NotFound();
-            }
+            if (product == null) return NotFound();
 
             _context.Products.Remove(product);
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
-        private bool ProductExists(int id)
+        // XÓA NHIỀU DÒNG CÙNG LÚC
+        [HttpDelete("multiple")]
+        public async Task<IActionResult> DeleteMultipleProducts([FromQuery] string ids)
         {
-            return _context.Products.Any(e => e.Id == id);
+            if (string.IsNullOrWhiteSpace(ids)) return BadRequest("Vui lòng nhập danh sách ID!");
+
+            var idList = ids.Split(',')
+                            .Select(i => i.Trim())
+                            .Where(i => int.TryParse(i, out _))
+                            .Select(int.Parse)
+                            .ToList();
+
+            var productsToDelete = await _context.Products
+                                                 .Where(p => idList.Contains(p.Id))
+                                                 .ToListAsync();
+
+            if (!productsToDelete.Any()) return NotFound("Không tìm thấy sản phẩm nào để xóa!");
+
+            _context.Products.RemoveRange(productsToDelete);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = $"Đã xóa thành công {productsToDelete.Count} sản phẩm!" });
         }
     }
 }

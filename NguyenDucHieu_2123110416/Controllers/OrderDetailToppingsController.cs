@@ -10,72 +10,57 @@ namespace NguyenDucHieu_2123110416.Controllers
     public class OrderDetailToppingsController : ControllerBase
     {
         private readonly AppDbContext _context;
-
-        public OrderDetailToppingsController(AppDbContext context)
-        {
-            _context = context;
-        }
+        public OrderDetailToppingsController(AppDbContext context) { _context = context; }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<OrderDetailTopping>>> GetOrderDetailToppings()
-        {
-            return await _context.OrderDetailToppings
-                .Include(odt => odt.Topping)
-                .ToListAsync();
-        }
+        public async Task<ActionResult<IEnumerable<OrderDetailTopping>>> GetOrderDetailToppings() => await _context.OrderDetailToppings.Include(o => o.Topping).ToListAsync();
 
         [HttpGet("{id}")]
         public async Task<ActionResult<OrderDetailTopping>> GetOrderDetailTopping(int id)
         {
-            var orderDetailTopping = await _context.OrderDetailToppings
-                .Include(odt => odt.Topping)
-                .FirstOrDefaultAsync(odt => odt.Id == id);
-
-            if (orderDetailTopping == null) return NotFound();
-            return orderDetailTopping;
+            var item = await _context.OrderDetailToppings.FindAsync(id);
+            if (item == null) return NotFound();
+            return item;
         }
 
         [HttpPost]
-        public async Task<ActionResult<OrderDetailTopping>> PostOrderDetailTopping(OrderDetailTopping orderDetailTopping)
+        public async Task<ActionResult<OrderDetailTopping>> PostOrderDetailTopping(OrderDetailTopping item)
         {
-            _context.OrderDetailToppings.Add(orderDetailTopping);
+            _context.OrderDetailToppings.Add(item);
             await _context.SaveChangesAsync();
-            return CreatedAtAction("GetOrderDetailTopping", new { id = orderDetailTopping.Id }, orderDetailTopping);
+            return CreatedAtAction("GetOrderDetailTopping", new { id = item.Id }, item);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutOrderDetailTopping(int id, OrderDetailTopping orderDetailTopping)
+        public async Task<IActionResult> PutOrderDetailTopping(int id, OrderDetailTopping item)
         {
-            if (id != orderDetailTopping.Id) return BadRequest();
-
-            _context.Entry(orderDetailTopping).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!OrderDetailToppingExists(id)) return NotFound();
-                else throw;
-            }
+            if (id != item.Id) return BadRequest("ID không khớp!");
+            _context.Entry(item).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteOrderDetailTopping(int id)
         {
-            var orderDetailTopping = await _context.OrderDetailToppings.FindAsync(id);
-            if (orderDetailTopping == null) return NotFound();
-
-            _context.OrderDetailToppings.Remove(orderDetailTopping);
+            var item = await _context.OrderDetailToppings.FindAsync(id);
+            if (item == null) return NotFound();
+            _context.OrderDetailToppings.Remove(item);
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        private bool OrderDetailToppingExists(int id)
+        [HttpDelete("multiple")]
+        public async Task<IActionResult> DeleteMultipleOrderDetailToppings([FromQuery] string ids)
         {
-            return _context.OrderDetailToppings.Any(e => e.Id == id);
+            if (string.IsNullOrWhiteSpace(ids)) return BadRequest("Vui lòng nhập danh sách ID!");
+            var idList = ids.Split(',').Select(i => i.Trim()).Where(i => int.TryParse(i, out _)).Select(int.Parse).ToList();
+            var listToDelete = await _context.OrderDetailToppings.Where(x => idList.Contains(x.Id)).ToListAsync();
+            if (!listToDelete.Any()) return NotFound("Không tìm thấy dữ liệu để xóa!");
+
+            _context.OrderDetailToppings.RemoveRange(listToDelete);
+            await _context.SaveChangesAsync();
+            return Ok(new { message = $"Đã xóa thành công {listToDelete.Count} topping của đơn!" });
         }
     }
 }

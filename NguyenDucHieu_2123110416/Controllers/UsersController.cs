@@ -17,24 +17,13 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> GetUsers()
-        {
-            // Dùng Include để nạp thông tin từ bảng Role sang
-            return await _context.Users.Include(u => u.Role).ToListAsync();
-        }
+        public async Task<ActionResult<IEnumerable<User>>> GetUsers() => await _context.Users.Include(u => u.Role).ToListAsync();
 
         [HttpGet("{id}")]
         public async Task<ActionResult<User>> GetUser(int id)
         {
-            var user = await _context.Users
-                                     .Include(u => u.Role)
-                                     .FirstOrDefaultAsync(u => u.Id == id);
-
-            if (user == null)
-            {
-                return NotFound();
-            }
-
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null) return NotFound();
             return user;
         }
 
@@ -43,30 +32,15 @@ namespace NguyenDucHieu_2123110416.Controllers
         {
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
-
             return CreatedAtAction("GetUser", new { id = user.Id }, user);
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUser(int id, User user)
         {
-            if (id != user.Id)
-            {
-                return BadRequest();
-            }
-
+            if (id != user.Id) return BadRequest("ID không khớp");
             _context.Entry(user).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!UserExists(id)) return NotFound();
-                else throw;
-            }
-
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 
@@ -75,16 +49,22 @@ namespace NguyenDucHieu_2123110416.Controllers
         {
             var user = await _context.Users.FindAsync(id);
             if (user == null) return NotFound();
-
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
-        private bool UserExists(int id)
+        [HttpDelete("multiple")]
+        public async Task<IActionResult> DeleteMultipleUsers([FromQuery] string ids)
         {
-            return _context.Users.Any(e => e.Id == id);
+            if (string.IsNullOrWhiteSpace(ids)) return BadRequest("Vui lòng nhập danh sách ID!");
+            var idList = ids.Split(',').Select(i => i.Trim()).Where(i => int.TryParse(i, out _)).Select(int.Parse).ToList();
+            var usersToDelete = await _context.Users.Where(u => idList.Contains(u.Id)).ToListAsync();
+            if (!usersToDelete.Any()) return NotFound("Không tìm thấy tài khoản nào để xóa!");
+
+            _context.Users.RemoveRange(usersToDelete);
+            await _context.SaveChangesAsync();
+            return Ok(new { message = $"Đã xóa thành công {usersToDelete.Count} tài khoản!" });
         }
     }
 }

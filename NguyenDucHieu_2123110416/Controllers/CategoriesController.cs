@@ -11,93 +11,79 @@ namespace NguyenDucHieu_2123110416.Controllers
     {
         private readonly AppDbContext _context;
 
-        // Constructor: Nhúng AppDbContext vào để giao tiếp với SQL Server
         public CategoriesController(AppDbContext context)
         {
             _context = context;
         }
 
-        //  LẤY DANH SÁCH 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
         {
             return await _context.Categories.ToListAsync();
         }
 
-        // LẤY CHI TIẾT 1 DÒNG
         [HttpGet("{id}")]
         public async Task<ActionResult<Category>> GetCategory(int id)
         {
             var category = await _context.Categories.FindAsync(id);
-
-            if (category == null)
-            {
-                return NotFound(); // Trả về lỗi 404 nếu không tìm thấy
-            }
-
+            if (category == null) return NotFound();
             return category;
         }
 
-        // THÊM MỚI (POST: api/Categories)
         [HttpPost]
         public async Task<ActionResult<Category>> PostCategory(Category category)
         {
             _context.Categories.Add(category);
-            await _context.SaveChangesAsync(); // Lưu xuống Database
-
+            await _context.SaveChangesAsync();
             return CreatedAtAction("GetCategory", new { id = category.Id }, category);
         }
 
-        // CẬP NHẬT (PUT: api/Categories/5)
         [HttpPut("{id}")]
         public async Task<IActionResult> PutCategory(int id, Category category)
         {
-            if (id != category.Id)
-            {
-                return BadRequest(); // Trả về lỗi 400 nếu ID không khớp
-            }
+            if (id != category.Id) return BadRequest("ID không khớp!");
 
             _context.Entry(category).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!CategoryExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent(); // Cập nhật thành công trả về 204
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
 
-        // XÓA (DELETE: api/Categories/5)
+        // XÓA 1 DÒNG (MẶC ĐỊNH)
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCategory(int id)
         {
             var category = await _context.Categories.FindAsync(id);
-            if (category == null)
-            {
-                return NotFound();
-            }
+            if (category == null) return NotFound();
 
             _context.Categories.Remove(category);
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
-        // Hàm kiểm tra xem Category có tồn tại hay không
-        private bool CategoryExists(int id)
+        // XÓA NHIỀU DÒNG CÙNG LÚC (API MỚI)
+        // Cách dùng trên Swagger: Gõ "1,2,3" vào ô ids
+        [HttpDelete("multiple")]
+        public async Task<IActionResult> DeleteMultipleCategories([FromQuery] string ids)
         {
-            return _context.Categories.Any(e => e.Id == id);
+            if (string.IsNullOrWhiteSpace(ids)) return BadRequest("Vui lòng nhập danh sách ID!");
+
+            // Cắt chuỗi "1,2,3" thành mảng số nguyên, tự động bỏ qua khoảng trắng hoặc chữ bậy bạ
+            var idList = ids.Split(',')
+                            .Select(i => i.Trim())
+                            .Where(i => int.TryParse(i, out _))
+                            .Select(int.Parse)
+                            .ToList();
+
+            var categoriesToDelete = await _context.Categories
+                                                   .Where(c => idList.Contains(c.Id))
+                                                   .ToListAsync();
+
+            if (!categoriesToDelete.Any()) return NotFound("Không tìm thấy danh mục nào để xóa!");
+
+            _context.Categories.RemoveRange(categoriesToDelete);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = $"Đã xóa thành công {categoriesToDelete.Count} danh mục!" });
         }
     }
 }
