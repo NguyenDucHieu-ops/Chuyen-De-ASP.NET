@@ -7,7 +7,7 @@ namespace NguyenDucHieu_2123110416.Models
     {
         [Key] public int Id { get; set; }
         public int CategoryId { get; set; }
-        [ForeignKey("CategoryId")] public Category Category { get; set; }
+        [ForeignKey("CategoryId")] public Category? Category { get; set; }
 
         [Required, StringLength(150)] public string ProductName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
