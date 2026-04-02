@@ -3,7 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NguyenDucHieu_2123110416.Models
 {
-    public class Product
+    // BÍ QUYẾT NẰM Ở ĐÂY: Thêm ": BaseAuditEntity" để kế thừa 7 cột theo dõi
+    public class Product : BaseAuditEntity
     {
         [Key] public int Id { get; set; }
         public int CategoryId { get; set; }

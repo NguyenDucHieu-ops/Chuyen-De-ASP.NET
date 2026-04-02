@@ -1,12 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NguyenDucHieu_2123110416.Data;
 using NguyenDucHieu_2123110416.Models;
+using System.Security.Claims;
 
 namespace NguyenDucHieu_2123110416.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize] // Khóa toàn bộ: Phải có Token mới được vào
     public class CategoriesController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -16,23 +19,36 @@ namespace NguyenDucHieu_2123110416.Controllers
             _context = context;
         }
 
+        // Khách hàng xem danh mục: Không cần Token, không xem cái đã xóa
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
         {
-            return await _context.Categories.ToListAsync();
+            return await _context.Categories
+                .Where(c => c.IsDeleted == false)
+                .ToListAsync();
         }
 
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<Category>> GetCategory(int id)
         {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null) return NotFound();
+            var category = await _context.Categories
+                .FirstOrDefaultAsync(c => c.Id == id && c.IsDeleted == false);
+
+            if (category == null) return NotFound("Danh mục không tồn tại!");
             return category;
         }
 
         [HttpPost]
         public async Task<ActionResult<Category>> PostCategory(Category category)
         {
+            // Móc ID Admin từ Token
+            var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            category.CreatedBy = adminId;
+            category.CreatedAt = DateTime.Now;
+
             _context.Categories.Add(category);
             await _context.SaveChangesAsync();
             return CreatedAtAction("GetCategory", new { id = category.Id }, category);
@@ -43,46 +59,57 @@ namespace NguyenDucHieu_2123110416.Controllers
         {
             if (id != category.Id) return BadRequest("ID không khớp!");
 
+            var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            category.UpdatedBy = adminId;
+            category.UpdatedAt = DateTime.Now;
+
             _context.Entry(category).State = EntityState.Modified;
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        // XÓA 1 DÒNG (MẶC ĐỊNH)
+        // XÓA MỀM 1 DÒNG
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCategory(int id)
         {
             var category = await _context.Categories.FindAsync(id);
-            if (category == null) return NotFound();
+            if (category == null || category.IsDeleted) return NotFound();
 
-            _context.Categories.Remove(category);
+            var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            category.IsDeleted = true;
+            category.DeletedAt = DateTime.Now;
+            category.DeletedBy = adminId;
+            category.IsActive = false;
+
             await _context.SaveChangesAsync();
-            return NoContent();
+            return Ok(new { message = $"Đã xóa danh mục '{category.CategoryName}' thành công!" });
         }
 
-        // XÓA NHIỀU DÒNG CÙNG LÚC (API MỚI)
-        // Cách dùng trên Swagger: Gõ "1,2,3" vào ô ids
+        // XÓA MỀM NHIỀU DÒNG
         [HttpDelete("multiple")]
         public async Task<IActionResult> DeleteMultipleCategories([FromQuery] string ids)
         {
             if (string.IsNullOrWhiteSpace(ids)) return BadRequest("Vui lòng nhập danh sách ID!");
 
-            // Cắt chuỗi "1,2,3" thành mảng số nguyên, tự động bỏ qua khoảng trắng hoặc chữ bậy bạ
-            var idList = ids.Split(',')
-                            .Select(i => i.Trim())
-                            .Where(i => int.TryParse(i, out _))
-                            .Select(int.Parse)
-                            .ToList();
+            var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var idList = ids.Split(',').Select(i => i.Trim()).Where(i => int.TryParse(i, out _)).Select(int.Parse).ToList();
 
             var categoriesToDelete = await _context.Categories
-                                                   .Where(c => idList.Contains(c.Id))
-                                                   .ToListAsync();
+                .Where(c => idList.Contains(c.Id) && c.IsDeleted == false)
+                .ToListAsync();
 
-            if (!categoriesToDelete.Any()) return NotFound("Không tìm thấy danh mục nào để xóa!");
+            if (!categoriesToDelete.Any()) return NotFound("Không tìm thấy danh mục nào!");
 
-            _context.Categories.RemoveRange(categoriesToDelete);
+            foreach (var item in categoriesToDelete)
+            {
+                item.IsDeleted = true;
+                item.DeletedAt = DateTime.Now;
+                item.DeletedBy = adminId;
+                item.IsActive = false;
+            }
+
             await _context.SaveChangesAsync();
-
             return Ok(new { message = $"Đã xóa thành công {categoriesToDelete.Count} danh mục!" });
         }
     }

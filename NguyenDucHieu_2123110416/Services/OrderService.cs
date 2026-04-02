@@ -15,7 +15,6 @@ namespace NguyenDucHieu_2123110416.Services
 
         public async Task<Order> CreateOrderAsync(int userId, int addressId, string? voucherCode, List<OrderDetail> cartItems, string note)
         {
-            // Mở Transaction: Bảo vệ an toàn dữ liệu 100%, nếu lỗi giữa chừng sẽ Rollback (Hủy toàn bộ)
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -66,7 +65,7 @@ namespace NguyenDucHieu_2123110416.Services
                             {
                                 var topping = await _context.Toppings.FindAsync(odt.ToppingId);
                                 if (topping != null && topping.IsActive)
-                                {
+                                {   
                                     odt.ToppingPrice = topping.Price;
                                     totalToppingPrice += topping.Price;
                                 }
@@ -155,23 +154,39 @@ namespace NguyenDucHieu_2123110416.Services
         // ======================================================================
         // HÀM MỚI THÊM: CẬP NHẬT TRẠNG THÁI (DÀNH CHO ADMIN)
         // ======================================================================
-        public async Task<bool> UpdateOrderStatusAsync(int orderId, string newStatus)
+        public async Task UpdateOrderStatusAsync(int orderId, string status)
         {
             var order = await _context.Orders.FindAsync(orderId);
-            if (order == null) throw new Exception("Không tìm thấy đơn hàng này!");
+            if (order == null) throw new Exception("Không tìm thấy đơn hàng");
 
-            // Lưới lọc bảo mật: Chỉ cho phép các trạng thái này lọt qua
-            var validStatuses = new[] { "Pending", "Processing", "Shipping", "Completed", "Cancelled" };
-            if (!validStatuses.Contains(newStatus))
-                throw new Exception("Trạng thái không hợp lệ! Chỉ nhận: Pending, Processing, Shipping, Completed, Cancelled.");
+            order.OrderStatus = status;
 
-            // Nếu đơn hàng bị Hủy (Cancelled), bạn có thể code thêm logic hoàn lại Điểm Loyalty hoặc Hoàn lượt dùng Voucher ở đây sau này.
+            // NGHIỆP VỤ VIP: Nếu đơn hàng hoàn thành, tặng điểm thưởng (1000đ = 1 điểm)
+            if (status == "Completed")
+            {
+                int pointsToAdd = (int)(order.FinalAmount / 1000);
 
-            order.OrderStatus = newStatus;
-            _context.Orders.Update(order);
+                var pointTrans = new PointTransaction
+                {
+                    UserId = order.UserId,
+                    OrderId = order.Id,
+                    Points = pointsToAdd,
+                    Description = $"Tặng điểm tri ân cho đơn hàng #{order.Id}",
+                    CreatedAt = DateTime.Now
+                };
+
+                _context.PointTransactions.Add(pointTrans);
+
+                // Cập nhật vào tổng điểm tích lũy của User
+                var user = await _context.Users.FindAsync(order.UserId);
+                if (user != null)
+                {
+                    user.LoyaltyPoints += pointsToAdd; // Phải khớp với cột trong Model User
+                    _context.Users.Update(user);
+                }
+            }
+
             await _context.SaveChangesAsync();
-
-            return true;
         }
     }
 }

@@ -2,7 +2,7 @@
 
 namespace NguyenDucHieu_2123110416.Models
 {
-    public class Banner
+    public class Banner : BaseAuditEntity
     {
         [Key] public int Id { get; set; }
         [Required] public string ImageUrl { get; set; } = string.Empty;
