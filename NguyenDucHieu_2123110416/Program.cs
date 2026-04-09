@@ -1,15 +1,17 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer; // Thư viện JWT
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens; // Thư viện cấu hình Token
-using Microsoft.OpenApi.Models; // <-- THÊM THƯ VIỆN NÀY ĐỂ ĐỘ CHẾ SWAGGER
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using NguyenDucHieu_2123110416.Data;
 using NguyenDucHieu_2123110416.Services;
-using System.Text; // Thư viện giải mã
+using System.Text;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Đăng ký SQL Server lấy từ appsettings.json
+// ====================================================================
+// 1. ĐĂNG KÝ CƠ SỞ DỮ LIỆU & SERVICES
+// ====================================================================
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -17,7 +19,7 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 // ====================================================================
-// 2. CẤU HÌNH BẢO MẬT JWT TOKEN (HỆ THỐNG AN NINH)
+// 2. CẤU HÌNH BẢO MẬT JWT TOKEN
 // ====================================================================
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["Key"] ?? throw new Exception("Thiếu Key JWT!");
@@ -37,23 +39,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(keyBytes)
         };
     });
-builder.Services.AddAuthorization();
-// ====================================================================
 
-// 3. Thêm Controllers và cấu hình CHỐNG VÒNG LẶP VÔ TẬN (Bỏ qua Cycles)
+builder.Services.AddAuthorization();
+
+// ====================================================================
+// 3. CẤU HÌNH CONTROLLERS & JSON
+// ====================================================================
 builder.Services.AddControllers().AddJsonOptions(x =>
     x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
 
 builder.Services.AddEndpointsApiExplorer();
 
 // ====================================================================
-// ĐỘ CHẾ SWAGGER: THÊM NÚT NHẬP TOKEN (AUTHORIZE)
+// 4. CẤU HÌNH SWAGGER (BẬT NÚT AUTHORIZE)
 // ====================================================================
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Hieu Store API", Version = "v1" });
 
-    // Tạo form nhập Token
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "Nhập Token theo cú pháp: Bearer {Token_Của_Bạn}",
@@ -63,7 +66,6 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer"
     });
 
-    // Yêu cầu Swagger gắn Token này vào mỗi API khi gọi
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -75,22 +77,29 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
-// ====================================================================
 
 var app = builder.Build();
 
-// 4. Cấu hình Middleware
-if (app.Environment.IsDevelopment())
+// ====================================================================
+// 5. CẤU HÌNH MIDDLEWARE (THỨ TỰ CỰC KỲ QUAN TRỌNG)
+// ====================================================================
+
+// 🔥 CHỖ NÀY QUAN TRỌNG: Đã bỏ "if (IsDevelopment)" để Swagger chạy được trên Host
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Hieu Store API v1");
+    // Để khi vào link mtempurl.com/swagger là thấy ngay
+    c.RoutePrefix = "swagger";
+});
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-// BẬT CÔNG TẮC BẢO VỆ Ở ĐÂY (Bắt buộc phải nằm TRÊN MapControllers)
-app.UseAuthentication(); // Nhận diện xem ai đang gõ cửa (Kiểm tra thẻ)
-app.UseAuthorization();  // Xem người đó có quyền vào phòng nào (Kiểm tra quyền hạn)
+
+// BẬT CÔNG TẮC BẢO VỆ (Authentication phải nằm TRƯỚC Authorization)
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
+
 app.Run();

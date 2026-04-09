@@ -65,7 +65,7 @@ namespace NguyenDucHieu_2123110416.Services
                             {
                                 var topping = await _context.Toppings.FindAsync(odt.ToppingId);
                                 if (topping != null && topping.IsActive)
-                                {   
+                                {
                                     odt.ToppingPrice = topping.Price;
                                     totalToppingPrice += topping.Price;
                                 }
@@ -80,27 +80,27 @@ namespace NguyenDucHieu_2123110416.Services
                     order.OrderDetails.Add(item);
                 }
 
-                // 4. XỬ LÝ VOUCHER KHẮT KHE & CHỐNG RACE CONDITION
+                // 4. XỬ LÝ VOUCHER KHẮT KHE
                 if (!string.IsNullOrWhiteSpace(voucherCode))
                 {
-                    var voucher = await _context.Vouchers.FirstOrDefaultAsync(v => v.VoucherCode == voucherCode && v.IsActive);
+                    // Đã đổi VoucherCode thành Code
+                    var voucher = await _context.Vouchers.FirstOrDefaultAsync(v => v.Code == voucherCode && v.IsActive && !v.IsDeleted);
                     if (voucher == null) throw new Exception("Mã giảm giá không tồn tại!");
-                    if (voucher.EndDate < DateTime.Now) throw new Exception("Mã giảm giá đã hết hạn!");
-                    if (order.TotalAmount < voucher.MinOrderAmount) throw new Exception($"Đơn hàng cần đạt tối thiểu {voucher.MinOrderAmount}đ!");
-                    if (voucher.UsedCount >= voucher.UsageLimit) throw new Exception("Mã giảm giá đã hết số lượng phát hành!");
 
-                    // Lỗ hổng 4: Kiểm tra giới hạn số lần dùng CỦA RIÊNG NGƯỜI DÙNG NÀY
-                    var userUsageCount = await _context.Orders.CountAsync(o => o.UserId == userId && o.VoucherId == voucher.Id);
-                    if (userUsageCount >= voucher.MaxUsagePerUser) throw new Exception($"Bạn chỉ được sử dụng mã này tối đa {voucher.MaxUsagePerUser} lần!");
+                    // Đã đổi EndDate thành ExpiryDate
+                    if (voucher.ExpiryDate < DateTime.Now) throw new Exception("Mã giảm giá đã hết hạn!");
 
-                    decimal discount = order.TotalAmount * ((decimal)voucher.DiscountPercent / 100);
-                    if (discount > voucher.MaxDiscountAmount) discount = voucher.MaxDiscountAmount;
+                    // Lấy số tiền giảm trực tiếp từ DiscountAmount (Theo BRD mới)
+                    decimal discount = voucher.DiscountAmount;
+
+                    // Đảm bảo không giảm lố số tiền của hóa đơn (tránh bill bị âm tiền)
+                    if (discount > order.TotalAmount)
+                    {
+                        discount = order.TotalAmount;
+                    }
 
                     order.VoucherId = voucher.Id;
                     order.DiscountAmount = discount;
-
-                    voucher.UsedCount++;
-                    _context.Vouchers.Update(voucher);
                 }
 
                 // 5. CHỐT TIỀN & CỘNG ĐIỂM LOYALTY (10.000đ = 1 điểm)
@@ -151,6 +151,7 @@ namespace NguyenDucHieu_2123110416.Services
 
             return orders;
         }
+
         // ======================================================================
         // HÀM MỚI THÊM: CẬP NHẬT TRẠNG THÁI (DÀNH CHO ADMIN)
         // ======================================================================

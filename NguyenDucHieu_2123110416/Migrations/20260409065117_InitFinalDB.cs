@@ -3,10 +3,12 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
 namespace NguyenDucHieu_2123110416.Migrations
 {
     /// <inheritdoc />
-    public partial class FixCascadePath : Migration
+    public partial class InitFinalDB : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -20,7 +22,14 @@ namespace NguyenDucHieu_2123110416.Migrations
                     ImageUrl = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Title = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     LinkUrl = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<int>(type: "int", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeletedBy = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -35,7 +44,14 @@ namespace NguyenDucHieu_2123110416.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     CategoryName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     ImageUrl = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<int>(type: "int", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeletedBy = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -48,8 +64,16 @@ namespace NguyenDucHieu_2123110416.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    RoleName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false)
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<int>(type: "int", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeletedBy = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -64,7 +88,14 @@ namespace NguyenDucHieu_2123110416.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ToppingName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<int>(type: "int", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeletedBy = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -77,16 +108,17 @@ namespace NguyenDucHieu_2123110416.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    VoucherCode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    DiscountPercent = table.Column<int>(type: "int", nullable: false),
-                    MaxDiscountAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    MinOrderAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    UsageLimit = table.Column<int>(type: "int", nullable: false),
-                    MaxUsagePerUser = table.Column<int>(type: "int", nullable: false),
-                    UsedCount = table.Column<int>(type: "int", nullable: false),
-                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                    Code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    DiscountAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    ExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<int>(type: "int", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeletedBy = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -106,7 +138,14 @@ namespace NguyenDucHieu_2123110416.Migrations
                     BasePrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     SizeUpPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     HasOptions = table.Column<bool>(type: "bit", nullable: false),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<int>(type: "int", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeletedBy = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -184,7 +223,13 @@ namespace NguyenDucHieu_2123110416.Migrations
                     PaymentStatus = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     OrderStatus = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     OrderNote = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<int>(type: "int", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeletedBy = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -275,7 +320,13 @@ namespace NguyenDucHieu_2123110416.Migrations
                     OrderId = table.Column<int>(type: "int", nullable: true),
                     Points = table.Column<int>(type: "int", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<int>(type: "int", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeletedBy = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -305,7 +356,13 @@ namespace NguyenDucHieu_2123110416.Migrations
                     OrderId = table.Column<int>(type: "int", nullable: false),
                     Rating = table.Column<int>(type: "int", nullable: false),
                     Comment = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<int>(type: "int", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeletedBy = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -375,6 +432,59 @@ namespace NguyenDucHieu_2123110416.Migrations
                         principalTable: "Reviews",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.InsertData(
+                table: "Banners",
+                columns: new[] { "Id", "CreatedAt", "CreatedBy", "DeletedAt", "DeletedBy", "ImageUrl", "IsActive", "IsDeleted", "LinkUrl", "Title", "UpdatedAt", "UpdatedBy" },
+                values: new object[] { 1, new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, "banner_he.jpg", true, false, "/products", "Đón Hè Cùng Trà Sữa", null, null });
+
+            migrationBuilder.InsertData(
+                table: "Categories",
+                columns: new[] { "Id", "CategoryName", "CreatedAt", "CreatedBy", "DeletedAt", "DeletedBy", "ImageUrl", "IsActive", "IsDeleted", "UpdatedAt", "UpdatedBy" },
+                values: new object[,]
+                {
+                    { 1, "Trà Sữa", new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, "trasua_thumb.jpg", true, false, null, null },
+                    { 2, "Cà Phê", new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, "caphe_thumb.jpg", true, false, null, null },
+                    { 3, "Đồ Ăn Vặt", new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, "snack_thumb.jpg", true, false, null, null }
+                });
+
+            migrationBuilder.InsertData(
+                table: "Roles",
+                columns: new[] { "Id", "CreatedAt", "CreatedBy", "DeletedAt", "DeletedBy", "Description", "IsActive", "IsDeleted", "Name", "UpdatedAt", "UpdatedBy" },
+                values: new object[,]
+                {
+                    { 1, new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, "", true, false, "Admin", null, null },
+                    { 2, new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, "", true, false, "Customer", null, null }
+                });
+
+            migrationBuilder.InsertData(
+                table: "Toppings",
+                columns: new[] { "Id", "CreatedAt", "CreatedBy", "DeletedAt", "DeletedBy", "IsActive", "IsDeleted", "Price", "ToppingName", "UpdatedAt", "UpdatedBy" },
+                values: new object[,]
+                {
+                    { 1, new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, true, false, 5000m, "Trân Châu Trắng", null, null },
+                    { 2, new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, true, false, 5000m, "Trân Châu Đen", null, null },
+                    { 3, new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, true, false, 10000m, "Kem Cheese", null, null }
+                });
+
+            migrationBuilder.InsertData(
+                table: "Vouchers",
+                columns: new[] { "Id", "Code", "CreatedAt", "CreatedBy", "DeletedAt", "DeletedBy", "DiscountAmount", "ExpiryDate", "IsActive", "IsDeleted", "UpdatedAt", "UpdatedBy" },
+                values: new object[,]
+                {
+                    { 1, "HIEUVIP", new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, 15000m, new DateTime(2026, 5, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), true, false, null, null },
+                    { 2, "FREESHIP", new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, 10000m, new DateTime(2026, 4, 24, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), true, false, null, null }
+                });
+
+            migrationBuilder.InsertData(
+                table: "Products",
+                columns: new[] { "Id", "BasePrice", "CategoryId", "CreatedAt", "CreatedBy", "DeletedAt", "DeletedBy", "Description", "HasOptions", "ImageUrl", "IsActive", "IsDeleted", "ProductName", "SizeUpPrice", "UpdatedAt", "UpdatedBy" },
+                values: new object[,]
+                {
+                    { 1, 35000m, 1, new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, "Vị ngọt thanh, đậm đà", true, "trasua_duongden.jpg", true, false, "Trà Sữa Trân Châu Đường Đen", 5000m, null, null },
+                    { 2, 29000m, 2, new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, "Đặc sản xứ Huế", true, "caphe_muoi.jpg", true, false, "Cà Phê Muối", 0m, null, null },
+                    { 3, 20000m, 3, new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007), null, null, null, "Chua cay mặn ngọt đủ vị", false, "banh_trang.jpg", true, false, "Bánh Tráng Trộn", 0m, null, null }
                 });
 
             migrationBuilder.CreateIndex(

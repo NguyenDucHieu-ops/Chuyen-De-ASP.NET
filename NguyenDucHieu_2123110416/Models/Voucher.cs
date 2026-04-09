@@ -3,29 +3,23 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NguyenDucHieu_2123110416.Models
 {
-    public class Voucher : BaseAuditEntity // Kế thừa để theo dõi người tạo/xóa
+    // Đã kế thừa BaseAuditEntity (Tốt)
+    public class Voucher : BaseAuditEntity
     {
-        [Key] public int Id { get; set; }
+        [Key]
+        public int Id { get; set; }
 
+        // 1. Đổi VoucherCode thành Code
         [Required(ErrorMessage = "Mã Voucher không được để trống")]
         [StringLength(50)]
-        public string VoucherCode { get; set; } = string.Empty;
+        public string Code { get; set; } = string.Empty;
 
-        [Range(1, 100, ErrorMessage = "Phần trăm giảm từ 1 đến 100%")]
-        public int DiscountPercent { get; set; }
-
+        // 2. Gom hết mớ % và điều kiện lằng nhằng lại thành 1 cột giảm tiền mặt
         [Column(TypeName = "decimal(18,2)")]
-        public decimal MaxDiscountAmount { get; set; } // Giảm tối đa bao nhiêu tiền
+        public decimal DiscountAmount { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal MinOrderAmount { get; set; } // Đơn tối thiểu bao nhiêu thì được áp dụng
-
-        public int UsageLimit { get; set; } // Tổng số lượt dùng của cả hệ thống
-        public int MaxUsagePerUser { get; set; } // Một người được dùng mấy lần
-        public int UsedCount { get; set; } = 0;
-
-        public DateTime StartDate { get; set; } = DateTime.Now;
-        public DateTime EndDate { get; set; }
+        // 3. Đổi Start/End thành ExpiryDate cho gọn
+        public DateTime ExpiryDate { get; set; }
 
         public bool IsActive { get; set; } = true;
     }

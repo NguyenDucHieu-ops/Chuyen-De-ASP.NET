@@ -25,12 +25,11 @@ namespace NguyenDucHieu_2123110416.Controllers
         public async Task<ActionResult<IEnumerable<Voucher>>> GetVouchers()
         {
             var now = DateTime.Now;
+            // Đã dọn dẹp các cột cũ, chỉ giữ lại kiểm tra ExpiryDate
             return await _context.Vouchers
                 .Where(v => v.IsDeleted == false &&
                             v.IsActive == true &&
-                            v.StartDate <= now &&
-                            v.EndDate >= now &&
-                            v.UsedCount < v.UsageLimit)
+                            v.ExpiryDate >= now)
                 .ToListAsync();
         }
 
@@ -85,7 +84,8 @@ namespace NguyenDucHieu_2123110416.Controllers
             voucher.IsActive = false;
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = $"Đã xóa voucher '{voucher.VoucherCode}' thành công!" });
+            // Đã sửa VoucherCode thành Code
+            return Ok(new { message = $"Đã xóa voucher '{voucher.Code}' thành công!" });
         }
     }
 }

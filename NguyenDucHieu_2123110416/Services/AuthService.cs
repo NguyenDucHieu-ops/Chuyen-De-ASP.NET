@@ -27,7 +27,8 @@ namespace NguyenDucHieu_2123110416.Services
                 throw new Exception("Email này đã được sử dụng!");
 
             // 2. Mặc định gán quyền Customer (Khách hàng) cho người mới đăng ký
-            var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "Customer");
+            // Đã sửa RoleName thành Name
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Customer");
             if (role == null) throw new Exception("Hệ thống chưa có Role Customer!");
 
             // 3. Nghiệp vụ bắt buộc: Mã hóa mật khẩu bằng BCrypt trước khi lưu
@@ -37,7 +38,7 @@ namespace NguyenDucHieu_2123110416.Services
             {
                 FullName = request.FullName,
                 Email = request.Email,
-                PasswordHash = hashedPassword, // Lưu cục Hash loằng ngoằng, không lưu pass thật
+                PasswordHash = hashedPassword,
                 PhoneNumber = request.PhoneNumber ?? "",
                 RoleId = role.Id,
                 IsActive = true,
@@ -72,12 +73,13 @@ namespace NguyenDucHieu_2123110416.Services
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
             // Gói thông tin của User vào bên trong Token (gọi là Claims)
+            // Đã sửa RoleName thành Name
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Name, user.FullName),
-                new Claim(ClaimTypes.Role, user.Role?.RoleName ?? "Customer") // Rất quan trọng để phân quyền
+                new Claim(ClaimTypes.Role, user.Role != null ? user.Role.Name : "Customer")
             };
 
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -92,7 +94,7 @@ namespace NguyenDucHieu_2123110416.Services
             var tokenHandler = new JwtSecurityTokenHandler();
             var token = tokenHandler.CreateToken(tokenDescriptor);
 
-            return tokenHandler.WriteToken(token); // Trả về chuỗi loằng ngoằng eyJhbG...
+            return tokenHandler.WriteToken(token);
         }
     }
 }

@@ -12,8 +12,8 @@ using NguyenDucHieu_2123110416.Data;
 namespace NguyenDucHieu_2123110416.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260402091702_SyncDatabaseFinal")]
-    partial class SyncDatabaseFinal
+    [Migration("20260409065117_InitFinalDB")]
+    partial class InitFinalDB
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -73,6 +73,18 @@ namespace NguyenDucHieu_2123110416.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Banners");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            ImageUrl = "banner_he.jpg",
+                            IsActive = true,
+                            IsDeleted = false,
+                            LinkUrl = "/products",
+                            Title = "Đón Hè Cùng Trà Sữa"
+                        });
                 });
 
             modelBuilder.Entity("NguyenDucHieu_2123110416.Models.Category", b =>
@@ -119,6 +131,35 @@ namespace NguyenDucHieu_2123110416.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Categories");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CategoryName = "Trà Sữa",
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            ImageUrl = "trasua_thumb.jpg",
+                            IsActive = true,
+                            IsDeleted = false
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CategoryName = "Cà Phê",
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            ImageUrl = "caphe_thumb.jpg",
+                            IsActive = true,
+                            IsDeleted = false
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CategoryName = "Đồ Ăn Vặt",
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            ImageUrl = "snack_thumb.jpg",
+                            IsActive = true,
+                            IsDeleted = false
+                        });
                 });
 
             modelBuilder.Entity("NguyenDucHieu_2123110416.Models.Order", b =>
@@ -417,6 +458,50 @@ namespace NguyenDucHieu_2123110416.Migrations
                     b.HasIndex("CategoryId");
 
                     b.ToTable("Products");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            BasePrice = 35000m,
+                            CategoryId = 1,
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            Description = "Vị ngọt thanh, đậm đà",
+                            HasOptions = true,
+                            ImageUrl = "trasua_duongden.jpg",
+                            IsActive = true,
+                            IsDeleted = false,
+                            ProductName = "Trà Sữa Trân Châu Đường Đen",
+                            SizeUpPrice = 5000m
+                        },
+                        new
+                        {
+                            Id = 2,
+                            BasePrice = 29000m,
+                            CategoryId = 2,
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            Description = "Đặc sản xứ Huế",
+                            HasOptions = true,
+                            ImageUrl = "caphe_muoi.jpg",
+                            IsActive = true,
+                            IsDeleted = false,
+                            ProductName = "Cà Phê Muối",
+                            SizeUpPrice = 0m
+                        },
+                        new
+                        {
+                            Id = 3,
+                            BasePrice = 20000m,
+                            CategoryId = 3,
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            Description = "Chua cay mặn ngọt đủ vị",
+                            HasOptions = false,
+                            ImageUrl = "banh_trang.jpg",
+                            IsActive = true,
+                            IsDeleted = false,
+                            ProductName = "Bánh Tráng Trộn",
+                            SizeUpPrice = 0m
+                        });
                 });
 
             modelBuilder.Entity("NguyenDucHieu_2123110416.Models.Review", b =>
@@ -506,19 +591,63 @@ namespace NguyenDucHieu_2123110416.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("DeletedBy")
+                        .HasColumnType("int");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("RoleName")
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.ToTable("Roles");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            Description = "",
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Admin"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            Description = "",
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Customer"
+                        });
                 });
 
             modelBuilder.Entity("NguyenDucHieu_2123110416.Models.Topping", b =>
@@ -564,6 +693,35 @@ namespace NguyenDucHieu_2123110416.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Toppings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Price = 5000m,
+                            ToppingName = "Trân Châu Trắng"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Price = 5000m,
+                            ToppingName = "Trân Châu Đen"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Price = 10000m,
+                            ToppingName = "Kem Cheese"
+                        });
                 });
 
             modelBuilder.Entity("NguyenDucHieu_2123110416.Models.User", b =>
@@ -661,6 +819,11 @@ namespace NguyenDucHieu_2123110416.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -673,10 +836,10 @@ namespace NguyenDucHieu_2123110416.Migrations
                     b.Property<int?>("DeletedBy")
                         .HasColumnType("int");
 
-                    b.Property<int>("DiscountPercent")
-                        .HasColumnType("int");
+                    b.Property<decimal>("DiscountAmount")
+                        .HasColumnType("decimal(18,2)");
 
-                    b.Property<DateTime>("EndDate")
+                    b.Property<DateTime>("ExpiryDate")
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsActive")
@@ -685,38 +848,37 @@ namespace NguyenDucHieu_2123110416.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<decimal>("MaxDiscountAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("MaxUsagePerUser")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("MinOrderAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int?>("UpdatedBy")
                         .HasColumnType("int");
 
-                    b.Property<int>("UsageLimit")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UsedCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("VoucherCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
                     b.HasKey("Id");
 
                     b.ToTable("Vouchers");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "HIEUVIP",
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            DiscountAmount = 15000m,
+                            ExpiryDate = new DateTime(2026, 5, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            IsActive = true,
+                            IsDeleted = false
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "FREESHIP",
+                            CreatedAt = new DateTime(2026, 4, 9, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            DiscountAmount = 10000m,
+                            ExpiryDate = new DateTime(2026, 4, 24, 13, 51, 14, 66, DateTimeKind.Local).AddTicks(9007),
+                            IsActive = true,
+                            IsDeleted = false
+                        });
                 });
 
             modelBuilder.Entity("NguyenDucHieu_2123110416.Models.Order", b =>
