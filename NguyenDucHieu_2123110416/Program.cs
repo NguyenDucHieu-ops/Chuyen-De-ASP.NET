@@ -78,13 +78,27 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// ====================================================================
+// 5. MỞ CỬA CORS CHO FRONTEND (RẤT QUAN TRỌNG)
+// ====================================================================
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy =>
+        {
+            policy.AllowAnyOrigin()   // Cho phép mọi tên miền (kể cả localhost:5173) gọi tới
+                  .AllowAnyMethod()   // Cho phép mọi hành động (GET, POST, PUT, DELETE)
+                  .AllowAnyHeader();  // Cho phép mọi loại header
+        });
+});
+
 var app = builder.Build();
 
 // ====================================================================
-// 5. CẤU HÌNH MIDDLEWARE (THỨ TỰ CỰC KỲ QUAN TRỌNG)
+// 6. CẤU HÌNH MIDDLEWARE (THỨ TỰ CỰC KỲ QUAN TRỌNG)
 // ====================================================================
 
-// 🔥 CHỖ NÀY QUAN TRỌNG: Đã bỏ "if (IsDevelopment)" để Swagger chạy được trên Host
+// Đã bỏ "if (IsDevelopment)" để Swagger chạy được trên Host
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -95,6 +109,9 @@ app.UseSwaggerUI(c =>
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// BẬT KÍCH HOẠT CORS BÊN DƯỚI (Phải nằm TRƯỚC Authentication/Authorization)
+app.UseCors("AllowAll");
 
 // BẬT CÔNG TẮC BẢO VỆ (Authentication phải nằm TRƯỚC Authorization)
 app.UseAuthentication();
