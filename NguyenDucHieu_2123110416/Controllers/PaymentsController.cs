@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using NguyenDucHieu_2123110416.Data;
 using NguyenDucHieu_2123110416.Models;
+using NguyenDucHieu_2123110416.Services; // Nhớ tạo file VnPayLibrary trong thư mục Services
 
 namespace NguyenDucHieu_2123110416.Controllers
 {
@@ -10,8 +11,48 @@ namespace NguyenDucHieu_2123110416.Controllers
     public class PaymentsController : ControllerBase
     {
         private readonly AppDbContext _context;
-        public PaymentsController(AppDbContext context) { _context = context; }
+        private readonly IConfiguration _config;
 
+        public PaymentsController(AppDbContext context, IConfiguration config)
+        {
+            _context = context;
+            _config = config;
+        }
+
+        // ========================================================
+        // 🚀 LOGIC VNPAY: TẠO URL THANH TOÁN
+        // ========================================================
+        [HttpGet("create-vnpay-url/{orderId}")]
+        public async Task<IActionResult> CreatePaymentUrl(int orderId, [FromQuery] double amount)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order == null) return NotFound("Không tìm thấy đơn hàng!");
+
+            var vnpay = new VnPayLibrary();
+            var vnp_Params = _config.GetSection("Vnpay");
+
+            // Nạp dữ liệu theo chuẩn VNPAY
+            vnpay.AddRequestData("vnp_Version", "2.1.0");
+            vnpay.AddRequestData("vnp_Command", "pay");
+            vnpay.AddRequestData("vnp_TmnCode", vnp_Params["TmnCode"]);
+            vnpay.AddRequestData("vnp_Amount", (amount * 100).ToString()); // VNPAY yêu cầu số tiền * 100
+            vnpay.AddRequestData("vnp_CreateDate", DateTime.Now.ToString("yyyyMMddHHmmss"));
+            vnpay.AddRequestData("vnp_CurrCode", "VND");
+            vnpay.AddRequestData("vnp_IpAddr", HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1");
+            vnpay.AddRequestData("vnp_Locale", "vn");
+            vnpay.AddRequestData("vnp_OrderInfo", "Thanh toan don hang HieuStore: " + orderId);
+            vnpay.AddRequestData("vnp_OrderType", "other");
+            vnpay.AddRequestData("vnp_ReturnUrl", vnp_Params["ReturnUrl"]);
+            vnpay.AddRequestData("vnp_TxnRef", orderId.ToString() + "_" + DateTime.Now.Ticks); // Mã giao dịch duy nhất
+
+            string paymentUrl = vnpay.CreateRequestUrl(vnp_Params["BaseUrl"], vnp_Params["HashSecret"]);
+
+            return Ok(new { url = paymentUrl });
+        }
+
+        // ========================================================
+        // 🛠️ CÁC HÀM CRUD CŨ CỦA HIẾU (GIỮ NGUYÊN 100%)
+        // ========================================================
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Payment>>> GetPayments() => await _context.Payments.ToListAsync();
 

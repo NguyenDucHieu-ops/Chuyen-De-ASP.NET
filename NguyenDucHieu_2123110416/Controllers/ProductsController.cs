@@ -80,6 +80,7 @@ namespace NguyenDucHieu_2123110416.Controllers
                     Description = request.Description,
                     BasePrice = request.BasePrice,
                     SizeUpPrice = request.SizeUpPrice,
+                    SizeXlPrice = request.SizeXlPrice, // 🚀 ĐÃ THÊM DÒNG NÀY ĐỂ HỨNG DATA SIZE XL TỪ REACT
                     HasOptions = request.HasOptions,
                     ImageUrl = $"/images/products/{uniqueFileName}",
                     IsActive = true,

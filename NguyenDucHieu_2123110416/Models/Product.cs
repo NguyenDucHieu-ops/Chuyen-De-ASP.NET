@@ -3,7 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NguyenDucHieu_2123110416.Models
 {
-    // BÍ QUYẾT NẰM Ở ĐÂY: Thêm ": BaseAuditEntity" để kế thừa 7 cột theo dõi
     public class Product : BaseAuditEntity
     {
         [Key] public int Id { get; set; }
@@ -16,6 +15,9 @@ namespace NguyenDucHieu_2123110416.Models
 
         [Column(TypeName = "decimal(18,2)")] public decimal BasePrice { get; set; }
         [Column(TypeName = "decimal(18,2)")] public decimal SizeUpPrice { get; set; }
+
+        // 👇 THÊM DÒNG NÀY (Giá cộng thêm cho size XL)
+        [Column(TypeName = "decimal(18,2)")] public decimal SizeXlPrice { get; set; }
 
         public bool HasOptions { get; set; } = true;
         public bool IsActive { get; set; } = true;

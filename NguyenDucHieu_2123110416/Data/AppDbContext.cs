@@ -25,7 +25,7 @@ namespace NguyenDucHieu_2123110416.Data
         public DbSet<OrderDetail> OrderDetails { get; set; }
         public DbSet<OrderDetailTopping> OrderDetailToppings { get; set; }
         public DbSet<Payment> Payments { get; set; }
-
+        public DbSet<Contact> Contacts { get; set; }
         public DbSet<Voucher> Vouchers { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<ReviewImage> ReviewImages { get; set; }

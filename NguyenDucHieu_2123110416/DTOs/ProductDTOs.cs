@@ -11,9 +11,12 @@ namespace NguyenDucHieu_2123110416.DTOs
 
         public decimal BasePrice { get; set; }
         public decimal SizeUpPrice { get; set; }
+
+        // 👇 THÊM DÒNG NÀY (Để hứng data XL từ React gửi qua)
+        public decimal SizeXlPrice { get; set; }
+
         public bool HasOptions { get; set; }
 
-        // BÍ QUYẾT Ở ĐÂY: Kiểu dữ liệu IFormFile dùng để hứng file vật lý (.png, .jpg)
         [Required(ErrorMessage = "Vui lòng chọn hình ảnh sản phẩm!")]
         public IFormFile ImageFile { get; set; } = null!;
     }
