@@ -10,7 +10,7 @@ namespace NguyenDucHieu_2123110416.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Bảo mật mặc định cho cả Class
+    [Authorize]
     public class ProductsController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -23,61 +23,40 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous] // Khách và Thầy đều xem được Menu
-        public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
-        {
-            return await _context.Products
-                .Include(p => p.Category)
-                .Where(p => p.IsDeleted == false)
-                .ToListAsync();
-        }
-
-        [HttpGet("{id}")]
         [AllowAnonymous]
-        public async Task<ActionResult<Product>> GetProduct(int id)
-        {
-            var product = await _context.Products
-                .Include(p => p.Category)
-                .FirstOrDefaultAsync(p => p.Id == id && p.IsDeleted == false);
-
-            if (product == null) return NotFound("Sản phẩm không tồn tại!");
-            return product;
-        }
+        public async Task<ActionResult<IEnumerable<Product>>> GetProducts() =>
+            await _context.Products.Include(p => p.Category).Where(p => !p.IsDeleted).OrderByDescending(p => p.CreatedAt).ToListAsync();
 
         [HttpPost]
-        [Authorize(Roles = "Admin")] // CHỈ ADMIN MỚI ĐƯỢC THÊM
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateProduct([FromForm] ProductCreateDTO request)
         {
             try
             {
                 var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
                 var file = request.ImageFile;
-                if (file == null || file.Length == 0) return BadRequest(new { error = "Vui lòng chọn file ảnh!" });
+                if (file == null || file.Length == 0) return BadRequest(new { error = "Sếp chưa chọn ảnh!" });
 
-                string rootPath = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-                string folderPath = Path.Combine(rootPath, "images", "products");
+                string folderPath = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "images", "products");
                 if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
 
-                string uniqueFileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-                string filePath = Path.Combine(folderPath, uniqueFileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create)) { await file.CopyToAsync(stream); }
+                string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+                using (var stream = new FileStream(Path.Combine(folderPath, fileName), FileMode.Create)) { await file.CopyToAsync(stream); }
 
                 var product = new Product
                 {
                     CategoryId = request.CategoryId,
                     ProductName = request.ProductName,
-                    Description = request.Description,
+                    Description = request.Description ?? "",
                     BasePrice = request.BasePrice,
                     SizeUpPrice = request.SizeUpPrice,
                     SizeXlPrice = request.SizeXlPrice,
                     HasOptions = request.HasOptions,
-                    ImageUrl = $"/images/products/{uniqueFileName}",
+                    ImageUrl = $"/images/products/{fileName}",
                     IsActive = true,
                     CreatedBy = adminId,
                     CreatedAt = DateTime.Now
                 };
-
                 _context.Products.Add(product);
                 await _context.SaveChangesAsync();
                 return Ok(new { message = "Thêm thành công!", product });
@@ -86,29 +65,58 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")] // CHỈ ADMIN MỚI ĐƯỢC SỬA
-        public async Task<IActionResult> PutProduct(int id, Product product)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> PutProduct(int id, [FromBody] ProductUpdateDTO dto)
         {
-            if (id != product.Id) return BadRequest("ID không khớp!");
-            product.UpdatedBy = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            product.UpdatedAt = DateTime.Now;
-            _context.Entry(product).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-            return NoContent();
+            // Nếu dữ liệu gửi lên sai kiểu, nó sẽ báo 400 ngay tại đây
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            if (id != dto.Id) return BadRequest(new { error = "ID lệch rồi sếp!" });
+
+            var product = await _context.Products.FindAsync(id);
+            if (product == null) return NotFound();
+
+            try
+            {
+                product.ProductName = dto.ProductName;
+                product.CategoryId = dto.CategoryId;
+                product.Description = dto.Description ?? "";
+                product.BasePrice = dto.BasePrice;
+                product.SizeUpPrice = dto.SizeUpPrice;
+                product.SizeXlPrice = dto.SizeXlPrice;
+                product.HasOptions = dto.HasOptions;
+                product.IsActive = dto.IsActive;
+                product.UpdatedBy = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                product.UpdatedAt = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Cập nhật xong rồi sếp!" });
+            }
+            catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")] // CHỈ ADMIN MỚI ĐƯỢC XÓA
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
             var product = await _context.Products.FindAsync(id);
-            if (product == null || product.IsDeleted) return NotFound();
+            if (product == null) return NotFound();
             product.IsDeleted = true;
-            product.DeletedAt = DateTime.Now;
-            product.DeletedBy = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            product.IsActive = false;
             await _context.SaveChangesAsync();
-            return Ok(new { message = $"Đã xóa món '{product.ProductName}'!" });
+            return Ok(new { message = "Đã xóa!" });
         }
+    }
+
+    public class ProductUpdateDTO
+    {
+        public int Id { get; set; }
+        public string ProductName { get; set; } = null!;
+        public int CategoryId { get; set; }
+        public string? Description { get; set; }
+        public decimal BasePrice { get; set; }
+        public decimal SizeUpPrice { get; set; }
+        public decimal SizeXlPrice { get; set; }
+        public bool HasOptions { get; set; }
+        public bool IsActive { get; set; }
     }
 }

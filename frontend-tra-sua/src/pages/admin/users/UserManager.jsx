@@ -6,10 +6,19 @@ const UserManager = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // State quản lý Modal
+  // State quản lý Modal & Form
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' hoặc 'edit'
   const [formData, setFormData] = useState({ fullName: '', email: '', password: '', roleId: 2 });
+  
+  // --- 🔔 HỆ THỐNG THÔNG BÁO XỊN VÀ VALIDATION ---
+  const [notify, setNotify] = useState({ show: false, message: '', type: 'success' });
+  const [errors, setErrors] = useState({});
+
+  const showSystemNotify = (msg, type = 'success') => {
+    setNotify({ show: true, message: msg, type });
+    setTimeout(() => setNotify({ show: false, message: '', type: 'success' }), 4000);
+  };
 
   const token = localStorage.getItem('hieu_store_token');
   const headers = { Authorization: `Bearer ${token}` };
@@ -20,55 +29,67 @@ const UserManager = () => {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/Users`, { headers });
       setUsers(res.data);
     } catch {
-      console.error("Lỗi đồng bộ dữ liệu sếp ơi!");
-    } finally {
-      setLoading(false);
-    }
+      showSystemNotify("Lỗi đồng bộ dữ liệu sếp ơi!", "error");
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchUsers(); }, []);
 
-  // Mở Modal Thêm mới
+  // HÀM KIỂM TRA LỖI TRỰC QUAN (NHUỘM ĐỎ)
+  const validateForm = () => {
+    let tempErrors = {};
+    if (!formData.fullName.trim()) tempErrors.fullName = "Họ tên không được để trống!";
+    if (!formData.email.trim()) {
+      tempErrors.email = "Email là bắt buộc!";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      tempErrors.email = "Email không đúng định dạng!";
+    }
+    if (modalMode === 'add' && !formData.password.trim()) {
+      tempErrors.password = "Tạo mới thì phải có mật khẩu chứ sếp!";
+    }
+    
+    setErrors(tempErrors);
+    return Object.keys(tempErrors).length === 0;
+  };
+
   const openAddModal = () => {
     setModalMode('add');
     setFormData({ fullName: '', email: '', password: '', roleId: 2 });
+    setErrors({});
     setIsModalOpen(true);
   };
 
-  // Mở Modal Chỉnh sửa
   const openEditModal = (user) => {
     setModalMode('edit');
-    setFormData({ ...user, password: '' }); // Edit không cần hiện pass cũ
+    setFormData({ ...user, password: '' });
+    setErrors({});
     setIsModalOpen(true);
   };
 
-  // Xử lý Gửi Form (Lưu hoặc Thêm)
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return; // Chặn lưu nếu có lỗi
+
     try {
       if (modalMode === 'add') {
         await axios.post(`${import.meta.env.VITE_API_URL}/api/Users`, formData, { headers });
-        alert("✨ Đã thêm thành viên mới thành công!");
+        showSystemNotify("✨ Thêm thành viên mới thành công!");
       } else {
         await axios.put(`${import.meta.env.VITE_API_URL}/api/Users/${formData.id}`, formData, { headers });
-        alert("📝 Cập nhật thông tin thành công!");
+        showSystemNotify("📝 Cập nhật thông tin thành công!");
       }
       setIsModalOpen(false);
       fetchUsers();
-    } catch {
-      alert("❌ Có lỗi xảy ra, sếp kiểm tra lại Backend nhé!");
-    }
+    } catch { showSystemNotify("❌ Email này có thể đã tồn tại. Sếp kiểm tra lại nhé!", "error"); }
   };
 
-  // Xử lý Xóa
   const handleDelete = async (id, name) => {
-    if (window.confirm(`Sếp có chắc muốn xóa "${name}" không? Thao tác này không thể hoàn tác!`)) {
+    if (window.confirm(`Sếp có chắc muốn xóa "${name}" không?`)) {
       try {
         await axios.delete(`${import.meta.env.VITE_API_URL}/api/Users/${id}`, { headers });
+        showSystemNotify("🗑️ Đã xóa tài khoản thành công!");
         fetchUsers();
-      } catch {
-        alert("Không thể xóa tài khoản này!");
-      }
+      } catch { showSystemNotify("❌ Không thể xóa tài khoản này!", "error"); }
     }
   };
 
@@ -78,7 +99,15 @@ const UserManager = () => {
   );
 
   return (
-    <div className="space-y-6 animate-[fadeIn_0.5s_ease-out]">
+    <div className="space-y-6 relative animate-[fadeIn_0.5s_ease-out]">
+      
+      {/* 🖥️ UI THÔNG BÁO HỆ THỐNG */}
+      {notify.show && (
+        <div className={`fixed top-10 right-10 z-[100] px-8 py-4 rounded-[1.5rem] font-black uppercase text-xs shadow-2xl animate-bounce transition-all ${notify.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+          {notify.message}
+        </div>
+      )}
+
       {/* HEADER & TOOLBAR */}
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col lg:flex-row justify-between items-center gap-6">
         <div>
@@ -157,7 +186,7 @@ const UserManager = () => {
         )}
       </div>
 
-      {/* MODAL THÊM / SỬA */}
+      {/* MODAL THÊM / SỬA CÓ NHUỘM ĐỎ LỖI */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-[3rem] w-full max-w-lg p-10 shadow-2xl animate-[zoomIn_0.3s_ease-out] relative">
@@ -173,23 +202,29 @@ const UserManager = () => {
                   <label className="text-[10px] font-black text-gray-400 uppercase ml-2 mb-2 block">Họ và Tên</label>
                   <input 
                     type="text" 
-                    required
                     value={formData.fullName}
-                    onChange={e => setFormData({...formData, fullName: e.target.value})}
-                    className="w-full p-4 bg-gray-50 rounded-2xl font-bold border-2 border-transparent focus:border-blue-500 outline-none transition-all"
+                    onChange={e => {
+                      setFormData({...formData, fullName: e.target.value});
+                      if(errors.fullName) setErrors({...errors, fullName: null});
+                    }}
+                    className={`w-full p-4 rounded-2xl font-bold outline-none transition-all border-2 ${errors.fullName ? 'bg-rose-50 border-rose-500' : 'bg-gray-50 border-transparent focus:border-blue-500'}`}
                   />
+                  {errors.fullName && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-2 italic">{errors.fullName}</p>}
                 </div>
                 
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase ml-2 mb-2 block">Địa chỉ Email</label>
                   <input 
                     type="email" 
-                    required
                     disabled={modalMode === 'edit'}
                     value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
-                    className={`w-full p-4 rounded-2xl font-bold border-2 border-transparent outline-none transition-all ${modalMode === 'edit' ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-50 focus:border-blue-500'}`}
+                    onChange={e => {
+                      setFormData({...formData, email: e.target.value});
+                      if(errors.email) setErrors({...errors, email: null});
+                    }}
+                    className={`w-full p-4 rounded-2xl font-bold outline-none transition-all border-2 ${modalMode === 'edit' ? 'bg-gray-200 text-gray-500 border-transparent cursor-not-allowed' : errors.email ? 'bg-rose-50 border-rose-500' : 'bg-gray-50 border-transparent focus:border-blue-500'}`}
                   />
+                  {errors.email && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-2 italic">{errors.email}</p>}
                 </div>
 
                 {modalMode === 'add' && (
@@ -197,11 +232,14 @@ const UserManager = () => {
                     <label className="text-[10px] font-black text-gray-400 uppercase ml-2 mb-2 block">Mật khẩu khởi tạo</label>
                     <input 
                       type="password" 
-                      required
                       value={formData.password}
-                      onChange={e => setFormData({...formData, password: e.target.value})}
-                      className="w-full p-4 bg-gray-50 rounded-2xl font-bold border-2 border-transparent focus:border-blue-500 outline-none transition-all"
+                      onChange={e => {
+                        setFormData({...formData, password: e.target.value});
+                        if(errors.password) setErrors({...errors, password: null});
+                      }}
+                      className={`w-full p-4 rounded-2xl font-bold outline-none transition-all border-2 ${errors.password ? 'bg-rose-50 border-rose-500' : 'bg-gray-50 border-transparent focus:border-blue-500'}`}
                     />
+                    {errors.password && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-2 italic">{errors.password}</p>}
                   </div>
                 )}
 
@@ -219,8 +257,8 @@ const UserManager = () => {
               </div>
 
               <div className="flex gap-4 pt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest hover:bg-gray-200 transition-all">Hủy bỏ</button>
-                <button type="submit" className="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest hover:bg-gray-200 transition-all text-xs">Hủy bỏ</button>
+                <button type="submit" className="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all text-xs active:scale-95">
                   {modalMode === 'add' ? 'Tạo tài khoản' : 'Lưu thay đổi'}
                 </button>
               </div>

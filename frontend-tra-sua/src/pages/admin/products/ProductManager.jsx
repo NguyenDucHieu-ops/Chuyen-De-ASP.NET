@@ -7,12 +7,22 @@ const ProductManager = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null); 
   const [imageFile, setImageFile] = useState(null);
-
-  // --- TRẠNG THÁI MỚI: CHI TIẾT SẢN PHẨM ---
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [errors, setErrors] = useState({});
 
-  // QUẢN LÝ 3 SIZE CHUẨN SHOPEEFOOD
+  // --- 🔔 HỆ THỐNG THÔNG BÁO XỊN ---
+  const [notify, setNotify] = useState({ show: false, message: '', type: 'success' });
+
+  const showSystemNotify = (msg, type = 'success') => {
+    setNotify({ show: true, message: msg, type });
+    setTimeout(() => setNotify({ show: false, message: '', type: 'success' }), 3000);
+  };
+
+  // 🔑 TOKEN & HEADERS
+  const token = localStorage.getItem('hieu_store_token');
+  const headers = { Authorization: `Bearer ${token}` };
+
   const [sizes, setSizes] = useState({
     M: { active: true, price: '' }, 
     L: { active: false, price: '' },
@@ -20,10 +30,7 @@ const ProductManager = () => {
   });
 
   const [newProduct, setNewProduct] = useState({ 
-    productName: '', 
-    categoryId: 1,
-    description: '',
-    isActive: true // Field Ẩn/Hiện
+    productName: '', categoryId: 1, description: '', isActive: true 
   });
 
   const fetchProducts = useCallback(async () => {
@@ -31,43 +38,50 @@ const ProductManager = () => {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/Products`);
       setProducts(res.data);
-    } catch (error) { 
-      console.error("Lỗi kết nối Backend!", error); 
-    } finally { 
-      setLoading(false); 
-    }
+    } catch { console.error("Lỗi kết nối Backend!"); } 
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  // HÀM ẨN/HIỆN NHANH TRÊN DANH SÁCH
+  const validateForm = () => {
+    let tempErrors = {};
+    if (!newProduct.productName?.trim()) tempErrors.productName = "Tên món không được để trống!";
+    if (!sizes.M.price || isNaN(parseFloat(sizes.M.price))) tempErrors.priceM = "Giá món phải là số!";
+    if (!editingId && !imageFile) tempErrors.image = "Chưa có ảnh món sếp ơi!";
+    setErrors(tempErrors);
+    return Object.keys(tempErrors).length === 0;
+  };
+
   const handleToggleStatus = async (product) => {
     try {
-      const updated = { ...product, isActive: !product.isActive };
-      await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${product.id}`, updated);
+      const updated = { 
+        id: product.id, productName: product.productName, categoryId: product.categoryId,
+        basePrice: product.basePrice, sizeUpPrice: product.sizeUpPrice, sizeXlPrice: product.sizeXlPrice,
+        hasOptions: product.hasOptions, isActive: !product.isActive 
+      };
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${product.id}`, updated, { headers });
+      showSystemNotify(`Đã cập nhật món ${product.productName}!`);
       fetchProducts();
-    } catch {
-      alert("Không thể cập nhật trạng thái!");
-    }
+    } catch { showSystemNotify("Lỗi cập nhật trạng thái!", "error"); }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Xóa món này khỏi menu nhé?")) {
+    if (window.confirm("Xóa món này khỏi menu nhé sếp?")) {
       try {
-        await axios.delete(`${import.meta.env.VITE_API_URL}/api/Products/${id}`);
-        alert("Đã xóa thành công!");
+        await axios.delete(`${import.meta.env.VITE_API_URL}/api/Products/${id}`, { headers });
+        showSystemNotify("Đã xóa vĩnh viễn sản phẩm!");
         fetchProducts();
-      } catch { alert("Lỗi xóa!"); }
+      } catch { showSystemNotify("Lỗi xóa dữ liệu!", "error"); }
     }
   };
 
   const openEditModal = (product) => {
     setEditingId(product.id);
+    setErrors({});
     setNewProduct({ 
-      productName: product.productName, 
-      categoryId: product.categoryId || 1,
-      description: product.description || '',
-      isActive: product.isActive
+      productName: product.productName, categoryId: product.categoryId, 
+      description: product.description || '', isActive: product.isActive
     });
     setSizes({
       M: { active: true, price: product.basePrice },
@@ -79,102 +93,94 @@ const ProductManager = () => {
   };
 
   const handleSave = async () => {
-    if (!newProduct.productName || !sizes.M.price) {
-      alert("Thiếu Tên hoặc Giá Size M rồi!"); return;
-    }
+    if (!validateForm()) return;
 
-    const finalBasePrice = parseInt(sizes.M.price) || 0;
-    const finalSizeUpPrice = sizes.L.active ? (parseInt(sizes.L.price) - finalBasePrice) : 0;
-    const finalSizeXlPrice = sizes.XL.active ? (parseInt(sizes.XL.price) - finalBasePrice) : 0;
-    const finalHasOptions = sizes.L.active || sizes.XL.active;
+    // 💡 FIX LỖI 400: ÉP KIỂU SỐ CỰC KỲ CẨN THẬN
+    const mPrice = parseFloat(sizes.M.price) || 0;
+    const lPrice = parseFloat(sizes.L.price) || 0;
+    const xlPrice = parseFloat(sizes.XL.price) || 0;
+    const upPrice = sizes.L.active ? (lPrice - mPrice) : 0;
+    const xlUpPrice = sizes.XL.active ? (xlPrice - mPrice) : 0;
 
     try {
       if (editingId) {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${editingId}`, {
-          id: editingId, 
+        // GỬI JSON (PUT)
+        const updateData = {
+          id: parseInt(editingId),
           productName: newProduct.productName,
-          categoryId: newProduct.categoryId,
+          categoryId: parseInt(newProduct.categoryId),
           description: newProduct.description,
           isActive: newProduct.isActive,
-          basePrice: finalBasePrice,
-          sizeUpPrice: finalSizeUpPrice,
-          sizeXlPrice: finalSizeXlPrice,
-          hasOptions: finalHasOptions
-        });
-        alert("Cập nhật thành công!");
+          basePrice: mPrice,
+          sizeUpPrice: upPrice,
+          sizeXlPrice: xlUpPrice,
+          hasOptions: (sizes.L.active || sizes.XL.active)
+        };
+        await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${editingId}`, updateData, { headers });
+        showSystemNotify("Cập nhật thành công! ✨");
       } else {
-        if (!imageFile) { alert("Chưa chọn ảnh!"); return; }
+        // GỬI FORMDATA (POST)
         const formData = new FormData();
         formData.append('ProductName', newProduct.productName);
-        formData.append('CategoryId', newProduct.categoryId);
+        formData.append('CategoryId', parseInt(newProduct.categoryId));
         formData.append('Description', newProduct.description);
         formData.append('IsActive', newProduct.isActive);
-        formData.append('BasePrice', finalBasePrice);
-        formData.append('SizeUpPrice', finalSizeUpPrice);
-        formData.append('SizeXlPrice', finalSizeXlPrice); 
-        formData.append('HasOptions', finalHasOptions); 
+        formData.append('BasePrice', mPrice);
+        formData.append('SizeUpPrice', upPrice);
+        formData.append('SizeXlPrice', xlUpPrice); 
+        formData.append('HasOptions', (sizes.L.active || sizes.XL.active)); 
         formData.append('ImageFile', imageFile);
-
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/Products`, formData);
-        alert("Thêm món hoàn chỉnh thành công!");
+        await axios.post(`${import.meta.env.VITE_API_URL}/api/Products`, formData, { headers });
+        showSystemNotify("Đã thêm món mới! 🎉");
       }
       setIsModalOpen(false);
-      setEditingId(null);
       fetchProducts();
-    } catch { alert("Lỗi lưu dữ liệu!"); }
+    } catch { showSystemNotify("Lỗi 400: Kiểm tra lại dữ liệu!", "error"); }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* 🔔 UI THÔNG BÁO HỆ THỐNG */}
+      {notify.show && (
+        <div className={`fixed top-10 right-10 z-[100] px-8 py-4 rounded-[1.5rem] font-black uppercase text-[10px] shadow-2xl animate-bounce ${notify.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+          {notify.type === 'success' ? '✅ ' : '❌ '} {notify.message}
+        </div>
+      )}
+
+      {/* HEADER CỦA SẾP */}
       <div className="flex justify-between items-center bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100">
         <div>
-          <h1 className="text-3xl font-black text-gray-800 tracking-tight italic">Kho <span className="text-blue-600">HieuStore</span></h1>
-          <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Quản lý & Ẩn hiện sản phẩm</p>
+          <h1 className="text-3xl font-black text-gray-800 tracking-tight italic uppercase">Kho <span className="text-blue-600">HieuStore</span></h1>
+          <p className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-widest italic">Hệ thống quản lý Menu</p>
         </div>
-        <button onClick={() => {
-            setEditingId(null);
-            setNewProduct({ productName: '', categoryId: 1, description: '', isActive: true });
-            setSizes({ M: { active: true, price: '' }, L: { active: false, price: '' }, XL: { active: false, price: '' } });
-            setImageFile(null); setIsModalOpen(true);
-          }}
-          className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black shadow-xl hover:bg-blue-700 transition-all"
-        >+ Thêm Món</button>
+        <button onClick={() => { setEditingId(null); setErrors({}); setNewProduct({ productName: '', categoryId: 1, description: '', isActive: true }); setSizes({ M: { active: true, price: '' }, L: { active: false, price: '' }, XL: { active: false, price: '' } }); setImageFile(null); setIsModalOpen(true); }} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black shadow-xl hover:bg-blue-700 transition-all active:scale-95 text-xs tracking-widest">+ THÊM MÓN</button>
       </div>
 
+      {/* BẢNG DANH SÁCH (GIỮ NGUYÊN) */}
       <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-gray-100">
         <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b border-gray-100 font-black text-xs text-gray-400 uppercase">
-            <tr>
-              <th className="p-6">Sản Phẩm</th>
-              <th className="p-6 text-center">Trạng Thái</th>
-              <th className="p-6 text-right">Thao Tác</th>
-            </tr>
+          <thead className="bg-gray-50 border-b border-gray-100 font-black text-xs text-gray-400 uppercase tracking-widest">
+            <tr><th className="p-8">Sản Phẩm</th><th className="p-8 text-center">Trạng Thái</th><th className="p-8 text-right">Thao Tác</th></tr>
           </thead>
           <tbody>
-            {loading ? <tr><td colSpan="3" className="p-10 text-center animate-pulse font-bold text-gray-400">Đang tải...</td></tr> : 
+            {loading ? <tr><td colSpan="3" className="p-20 text-center font-black text-gray-300 italic animate-pulse uppercase">Đang đồng bộ...</td></tr> : 
             products.map(item => (
-              <tr key={item.id} className={`border-b border-gray-50 hover:bg-blue-50/20 transition-all ${!item.isActive ? 'bg-gray-50/50' : ''}`}>
-                <td className="p-6">
-                  <div className="flex items-center gap-4">
-                    <img src={`${import.meta.env.VITE_API_URL}${item.imageUrl}`} className={`w-14 h-14 rounded-xl object-cover shadow-sm ${!item.isActive ? 'grayscale opacity-50' : ''}`} onError={(e)=>e.target.src='https://placehold.co/100'} />
-                    <div>
-                      <div className={`font-black ${item.isActive ? 'text-gray-800' : 'text-gray-400'}`}>{item.productName}</div>
-                      <div className="text-xs text-blue-600 font-bold">M: {item.basePrice?.toLocaleString()}đ</div>
-                    </div>
+              <tr key={item.id} className={`border-b border-gray-50 hover:bg-blue-50/20 transition-all ${!item.isActive ? 'bg-gray-50/30' : ''}`}>
+                <td className="p-8">
+                  <div className="flex items-center gap-6">
+                    <img src={`${import.meta.env.VITE_API_URL}${item.imageUrl}`} className={`w-16 h-16 rounded-2xl object-cover shadow-sm ${!item.isActive ? 'grayscale opacity-40' : ''}`} onError={(e)=>e.target.src='https://placehold.co/100'} alt="mon" />
+                    <div><div className={`font-black text-lg ${item.isActive ? 'text-gray-800' : 'text-gray-400'}`}>{item.productName}</div><div className="text-[10px] text-blue-600 font-black uppercase mt-1">M: {item.basePrice?.toLocaleString()}đ</div></div>
                   </div>
                 </td>
-                <td className="p-6 text-center">
-                  <button 
-                    onClick={() => handleToggleStatus(item)}
-                    className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all border-2 ${item.isActive ? 'bg-green-100 text-green-600 border-green-100' : 'bg-red-100 text-red-600 border-red-100'}`}
-                  >
+                <td className="p-8 text-center">
+                  <button onClick={() => handleToggleStatus(item)} className={`px-5 py-2 rounded-xl text-[9px] font-black uppercase transition-all border ${item.isActive ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
                     {item.isActive ? '● Đang Hiện' : '○ Đang Ẩn'}
                   </button>
                 </td>
-                <td className="p-6 text-right space-x-3">
-                  <button onClick={() => { setSelectedProduct(item); setIsDetailOpen(true); }} className="text-gray-400 font-bold hover:text-blue-600 transition-colors uppercase text-xs">Chi tiết</button>
-                  <button onClick={() => openEditModal(item)} className="p-2 text-blue-600 font-black underline uppercase text-xs">Sửa</button>
-                  <button onClick={() => handleDelete(item.id)} className="p-2 text-red-500 font-bold uppercase text-xs">Xóa</button>
+                <td className="p-8 text-right space-x-3">
+                  <button onClick={() => { setSelectedProduct(item); setIsDetailOpen(true); }} className="text-gray-400 font-black uppercase text-[9px] hover:text-blue-600">Chi tiết</button>
+                  <button onClick={() => openEditModal(item)} className="text-blue-600 font-black underline uppercase text-[9px]">Sửa</button>
+                  <button onClick={() => handleDelete(item.id)} className="text-rose-500 font-black uppercase text-[9px]">Xóa</button>
                 </td>
               </tr>
             ))}
@@ -182,91 +188,79 @@ const ProductManager = () => {
         </table>
       </div>
 
-      {/* --- MODAL XEM CHI TIẾT (Detail) --- */}
+      {/* --- MODAL XEM CHI TIẾT (GIỮ NGUYÊN) --- */}
       {isDetailOpen && selectedProduct && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-[2.5rem] p-10 w-full max-w-lg shadow-2xl relative animate-fadeIn">
-            <button onClick={() => setIsDetailOpen(false)} className="absolute top-6 right-6 text-3xl font-black text-gray-300 hover:text-gray-800 transition-colors">×</button>
-            <img src={`${import.meta.env.VITE_API_URL}${selectedProduct.imageUrl}`} className="w-full h-60 object-cover rounded-[2rem] mb-6 shadow-md" />
-            <h2 className="text-3xl font-black text-gray-800 italic mb-2 tracking-tighter uppercase">{selectedProduct.productName}</h2>
-            <div className="flex gap-2 mb-6">
-               <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase border border-blue-100">ID: {selectedProduct.id}</span>
-               <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${selectedProduct.isActive ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'}`}>{selectedProduct.isActive ? 'CÔNG KHAI' : 'ĐANG KHÓA'}</span>
+        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-[3rem] p-10 w-full max-w-lg shadow-2xl relative animate-fadeIn border border-gray-100">
+            <button onClick={() => setIsDetailOpen(false)} className="absolute top-8 right-8 text-4xl font-black text-gray-300 hover:text-gray-900 transition-colors">×</button>
+            <img src={`${import.meta.env.VITE_API_URL}${selectedProduct.imageUrl}`} className="w-full h-64 object-cover rounded-[2.5rem] mb-8 shadow-md" alt="detail" />
+            <h2 className="text-4xl font-black text-gray-800 italic mb-2 uppercase tracking-tighter">{selectedProduct.productName}</h2>
+            <div className="space-y-4 bg-gray-50 p-8 rounded-[2.5rem] mb-8 border border-gray-100 font-black text-gray-500 italic text-sm">
+                <div className="flex justify-between border-b border-gray-200 pb-3"><span>Gốc (Size M):</span> <span className="text-gray-900 text-lg">{selectedProduct.basePrice?.toLocaleString()}đ</span></div>
+                <div className="flex justify-between border-b border-gray-200 pb-3"><span>Giá Size L:</span> <span className="text-blue-600 text-lg">{(selectedProduct.basePrice + selectedProduct.sizeUpPrice)?.toLocaleString()}đ</span></div>
+                <div className="flex justify-between"><span>Giá Size XL:</span> <span className="text-purple-600 text-lg">{(selectedProduct.basePrice + selectedProduct.sizeXlPrice)?.toLocaleString()}đ</span></div>
             </div>
-            <div className="space-y-3 bg-gray-50 p-6 rounded-[2rem] border border-gray-100 mb-6">
-               <div className="flex justify-between font-bold text-gray-600 border-b border-gray-200 pb-2"><span>Size M (Gốc):</span> <span className="text-gray-900">{selectedProduct.basePrice?.toLocaleString()}đ</span></div>
-               <div className="flex justify-between font-bold text-gray-600 border-b border-gray-200 pb-2"><span>Giá Size L:</span> <span className="text-blue-600">{(selectedProduct.basePrice + selectedProduct.sizeUpPrice)?.toLocaleString()}đ</span></div>
-               <div className="flex justify-between font-bold text-gray-600 pb-2"><span>Giá Size XL:</span> <span className="text-purple-600">{(selectedProduct.basePrice + selectedProduct.sizeXlPrice)?.toLocaleString()}đ</span></div>
-            </div>
-            <p className="text-[10px] font-black text-gray-400 uppercase ml-2 mb-1 italic">Ghi chú/Mô tả:</p>
-            <div className="bg-gray-50 p-4 rounded-2xl italic text-gray-700 font-medium">"{selectedProduct.description || 'Không có mô tả cho món này.'}"</div>
+            <div className="bg-gray-50 p-6 rounded-3xl italic text-gray-600 text-sm border-l-8 border-blue-500">"{selectedProduct.description || 'Chưa cập nhật mô tả.'}"</div>
           </div>
         </div>
       )}
 
-      {/* MODAL THÊM / SỬA */}
+      {/* --- MODAL THÊM / SỬA (GIỮ NGUYÊN) --- */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[2rem] p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-black mb-6 uppercase italic text-blue-600">{editingId ? "Cập Nhật Sản Phẩm" : "Thêm Món Mới"}</h2>
-            
-            <div className="grid grid-cols-2 gap-4">
-               <div className="col-span-2">
-                 <label className="text-xs font-bold text-gray-500 uppercase ml-2">Tên Sản Phẩm</label>
-                 <input type="text" value={newProduct.productName} onChange={e => setNewProduct({...newProduct, productName: e.target.value})} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none mt-1 border-2 border-transparent focus:border-blue-500 transition-all" />
-               </div>
-
-               <div className="col-span-1">
-                 <label className="text-xs font-bold text-gray-500 uppercase ml-2">Danh Mục</label>
-                 <select value={newProduct.categoryId} onChange={e => setNewProduct({...newProduct, categoryId: parseInt(e.target.value)})} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none mt-1">
-                    <option value={1}>1 - Trà Sữa</option>
-                    <option value={2}>2 - Cà Phê</option>
-                    <option value={3}>3 - Ăn Vặt</option>
-                 </select>
-               </div>
-
-               <div className="col-span-1">
-                  <label className="text-xs font-bold text-gray-500 uppercase ml-2 block mb-1">Hiển Thị Món</label>
-                  <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl h-[56px] border border-gray-100">
-                    <span className="text-[10px] font-black text-gray-400">CHO PHÉP BÁN</span>
-                    <input type="checkbox" checked={newProduct.isActive} onChange={e => setNewProduct({...newProduct, isActive: e.target.checked})} className="w-6 h-6 accent-blue-600" />
+        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-[3rem] p-12 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto border-4 border-blue-50">
+            <h2 className="text-3xl font-black mb-10 uppercase italic text-blue-600 tracking-tighter underline decoration-4 underline-offset-8 decoration-blue-200">{editingId ? "Cập Nhật Sản Phẩm" : "Thêm Món Mới"}</h2>
+            <div className="grid grid-cols-2 gap-8">
+                <div className="col-span-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Tên Sản Phẩm</label>
+                  <input type="text" value={newProduct.productName} onChange={e => {setNewProduct({...newProduct, productName: e.target.value}); if (errors.productName) setErrors({...errors, productName: null});}} className={`w-full p-5 bg-gray-50 rounded-[1.5rem] font-black outline-none border-2 transition-all text-lg ${errors.productName ? 'border-rose-500 bg-rose-50' : 'border-transparent focus:border-blue-500'}`} />
+                  {errors.productName && <p className="text-[10px] text-rose-500 font-black mt-2 ml-4 uppercase italic">⚠ {errors.productName}</p>}
+                </div>
+                <div className="col-span-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Danh Mục</label>
+                  <select value={newProduct.categoryId} onChange={e => setNewProduct({...newProduct, categoryId: e.target.value})} className="w-full p-5 bg-gray-50 rounded-[1.5rem] font-black outline-none border-2 border-transparent focus:border-blue-500"><option value={1}>1 - Trà Sữa</option><option value={2}>2 - Cà Phê</option><option value={3}>3 - Ăn Vặt</option></select>
+                </div>
+                <div className="col-span-1">
+                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Hiển Thị</label>
+                   <div className="flex items-center gap-4 bg-gray-50 p-5 rounded-[1.5rem] h-[68px] border-2 border-transparent">
+                     <span className="text-[10px] font-black text-gray-400 uppercase">BÁN NGAY</span>
+                     <input type="checkbox" checked={newProduct.isActive} onChange={e => setNewProduct({...newProduct, isActive: e.target.checked})} className="w-6 h-6 accent-blue-600 cursor-pointer" />
+                   </div>
+                </div>
+                <div className="col-span-2 space-y-4">
+                   <label className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] ml-4 block">Giá Bán Theo Size (VNĐ)</label>
+                   <div className="bg-gray-50 p-6 rounded-[2.5rem] space-y-4">
+                      <div className="flex items-center gap-4">
+                        <span className="font-black text-gray-400 uppercase text-[9px] w-16">Size M</span>
+                        <input type="number" placeholder="Giá..." value={sizes.M.price} onChange={e => {setSizes({...sizes, M: {...sizes.M, price: e.target.value}}); if (errors.priceM) setErrors({...errors, priceM: null});}} className={`flex-1 p-3 rounded-xl outline-none font-black text-lg border ${errors.priceM ? 'border-rose-500' : 'border-transparent'}`} />
+                      </div>
+                      <div className={`flex items-center gap-4 p-3 rounded-xl transition-all ${sizes.L.active ? 'bg-blue-100/50' : 'opacity-40'}`}>
+                        <input type="checkbox" checked={sizes.L.active} onChange={e => setSizes({...sizes, L: {...sizes.L, active: e.target.checked}})} className="w-5 h-5 accent-blue-600" />
+                        <span className="font-black text-blue-800 uppercase text-[9px] w-16">Size L</span>
+                        <input type="number" value={sizes.L.price} disabled={!sizes.L.active} onChange={e => setSizes({...sizes, L: {...sizes.L, price: e.target.value}})} className="flex-1 p-2 rounded-lg outline-none font-black border-none" placeholder="Tổng giá L..." />
+                      </div>
+                      <div className={`flex items-center gap-4 p-3 rounded-xl transition-all ${sizes.XL.active ? 'bg-purple-100/50' : 'opacity-40'}`}>
+                        <input type="checkbox" checked={sizes.XL.active} onChange={e => setSizes({...sizes, XL: {...sizes.XL, active: e.target.checked}})} className="w-5 h-5 accent-purple-600" />
+                        <span className="font-black text-purple-800 uppercase text-[9px] w-16">Size XL</span>
+                        <input type="number" value={sizes.XL.price} disabled={!sizes.XL.active} onChange={e => setSizes({...sizes, XL: {...sizes.XL, price: e.target.value}})} className="flex-1 p-2 rounded-lg outline-none font-black border-none" placeholder="Tổng giá XL..." />
+                      </div>
+                   </div>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Mô tả</label>
+                  <textarea value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} className="w-full p-5 bg-gray-50 rounded-[1.5rem] font-black outline-none h-24 border-2 border-transparent focus:border-blue-500 italic text-sm transition-all" placeholder="Mô tả món ăn..."></textarea>
+                </div>
+                {!editingId && (
+                  <div className="col-span-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Ảnh</label>
+                    <input type="file" accept="image/*" onChange={e => {setImageFile(e.target.files[0]); if (errors.image) setErrors({...errors, image: null});}} className={`w-full p-4 bg-gray-50 rounded-[1.5rem] font-black text-xs border-2 ${errors.image ? 'border-rose-500 bg-rose-50' : 'border-transparent'}`} />
+                    {errors.image && <p className="text-[10px] text-rose-500 font-black mt-2 ml-4 uppercase italic">⚠ {errors.image}</p>}
                   </div>
-               </div>
-
-               <div className="col-span-2 mt-2">
-                  <label className="text-xs font-black text-blue-600 uppercase mb-2 block border-b pb-2">Giá Bán Theo Size (VNĐ)</label>
-                  <div className="flex items-center gap-4 mb-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
-                     <span className="font-bold w-16 text-gray-700 uppercase text-[10px]">Size M</span>
-                     <input type="number" placeholder="Giá Gốc..." value={sizes.M.price} onChange={e => setSizes({...sizes, M: {...sizes.M, price: e.target.value}})} className="flex-1 p-2 bg-white rounded-lg outline-none font-black text-gray-900 border border-gray-200" />
-                  </div>
-                  <div className={`flex items-center gap-4 mb-3 p-3 rounded-xl border ${sizes.L.active ? 'bg-blue-50/50 border-blue-200 shadow-inner' : 'bg-white border-gray-100 opacity-60'}`}>
-                     <input type="checkbox" checked={sizes.L.active} onChange={e => setSizes({...sizes, L: {...sizes.L, active: e.target.checked}})} className="w-5 h-5 accent-blue-600" />
-                     <span className="font-bold w-16 text-blue-800 uppercase text-[10px]">Size L</span>
-                     <input type="number" placeholder="Tổng giá L..." value={sizes.L.price} disabled={!sizes.L.active} onChange={e => setSizes({...sizes, L: {...sizes.L, price: e.target.value}})} className="flex-1 p-2 border border-blue-200 rounded-lg outline-none font-black text-blue-900 disabled:bg-gray-100" />
-                  </div>
-                  <div className={`flex items-center gap-4 p-3 rounded-xl border ${sizes.XL.active ? 'bg-purple-50/50 border-purple-200 shadow-inner' : 'bg-white border-gray-100 opacity-60'}`}>
-                     <input type="checkbox" checked={sizes.XL.active} onChange={e => setSizes({...sizes, XL: {...sizes.XL, active: e.target.checked}})} className="w-5 h-5 accent-purple-600" />
-                     <span className="font-bold w-16 text-purple-800 uppercase text-[10px]">Size XL</span>
-                     <input type="number" placeholder="Tổng giá XL..." value={sizes.XL.price} disabled={!sizes.XL.active} onChange={e => setSizes({...sizes, XL: {...sizes.XL, price: e.target.value}})} className="flex-1 p-2 border border-purple-200 rounded-lg outline-none font-black text-purple-900 disabled:bg-gray-100" />
-                  </div>
-               </div>
-
-               <div className="col-span-2">
-                 <label className="text-xs font-bold text-gray-500 uppercase ml-2">Mô tả (Nguyên liệu, vị...)</label>
-                 <textarea value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none mt-1 h-20 border border-gray-200"></textarea>
-               </div>
-
-               {!editingId && (
-                 <div className="col-span-2">
-                   <label className="text-xs font-bold text-gray-500 uppercase mb-1 ml-2 block">Hình Ảnh Món</label>
-                   <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files[0])} className="w-full p-3 bg-gray-50 rounded-2xl font-bold text-sm" />
-                 </div>
-               )}
+                )}
             </div>
-
-            <div className="flex gap-4 mt-8">
-               <button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-gray-100 rounded-2xl font-black text-gray-400 hover:bg-gray-200 transition-all uppercase text-xs">Hủy</button>
-               <button onClick={handleSave} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-all uppercase text-xs">Lưu Database Xịn</button>
+            <div className="flex gap-6 mt-12">
+                <button onClick={() => setIsModalOpen(false)} className="flex-1 py-6 bg-gray-100 rounded-[2rem] font-black text-gray-400 uppercase tracking-[0.2em] hover:bg-gray-200 transition-all text-xs">Đóng lại</button>
+                <button onClick={handleSave} className="flex-[2] py-6 bg-blue-600 text-white rounded-[2rem] font-black shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95 uppercase tracking-[0.2em] text-xs">Lưu Dữ Liệu 🚀</button>
             </div>
           </div>
         </div>

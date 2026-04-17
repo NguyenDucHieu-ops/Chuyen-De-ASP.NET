@@ -25,8 +25,10 @@ import ReviewManager from './pages/admin/reviews/ReviewManager';
 import PaymentManager from './pages/admin/payments/PaymentManager';
 import ContactManager from './pages/admin/contacts/ContactManager';
 
+// 👇 NHỚ IMPORT FILE LOG VÀO ĐÂY NHA SẾP (Kiểm tra lại đường dẫn import tùy vào chỗ sếp đặt file nhé, ví dụ bên dưới là mình gom nó vô chung chỗ với mấy cái Manager kia)
+import ActivityLogManager from "./components/ActivityLogManager";
 // Security Component
-import ProtectedRoute from './components/ProtectedRoute'; // Nhớ check đúng đường dẫn file này nha sếp
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -60,6 +62,9 @@ function App() {
             <Route path="reviews" element={<ReviewManager />} /> 
             <Route path="payments" element={<PaymentManager />} /> 
             <Route path="contacts" element={<ContactManager />} />
+            
+            {/* 👇 KẾT NỐI ROUTE CHO CAMERA HỆ THỐNG */}
+            <Route path="activity-logs" element={<ActivityLogManager />} />
           </Route>
         </Route>
 

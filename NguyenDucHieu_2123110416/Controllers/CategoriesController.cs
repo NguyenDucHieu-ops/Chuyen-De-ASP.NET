@@ -41,13 +41,20 @@ namespace NguyenDucHieu_2123110416.Controllers
 
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<Category>> PostCategory(Category category)
+        public async Task<ActionResult<Category>> PostCategory([FromBody] CategoryUpdateDTO dto)
         {
-            var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var adminIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(adminIdString)) return Unauthorized();
 
-            category.CreatedBy = adminId;
-            category.CreatedAt = DateTime.Now;
-            category.IsDeleted = false;
+            var category = new Category
+            {
+                CategoryName = dto.CategoryName,
+                // Đã gỡ thuộc tính Description vì Model Category của sếp không có
+                IsActive = dto.IsActive,
+                IsDeleted = false,
+                CreatedBy = int.Parse(adminIdString),
+                CreatedAt = DateTime.Now
+            };
 
             _context.Categories.Add(category);
             await _context.SaveChangesAsync();
@@ -56,17 +63,25 @@ namespace NguyenDucHieu_2123110416.Controllers
 
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> PutCategory(int id, Category category)
+        public async Task<IActionResult> PutCategory(int id, [FromBody] CategoryUpdateDTO dto)
         {
-            if (id != category.Id) return BadRequest("ID không khớp!");
+            if (id != dto.Id) return BadRequest("ID không khớp!");
 
-            var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            category.UpdatedBy = adminId;
+            var category = await _context.Categories.FindAsync(id);
+            if (category == null) return NotFound("Không thấy danh mục này!");
+
+            var adminIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(adminIdString)) return Unauthorized();
+
+            // Cập nhật an toàn (Đã gỡ Description)
+            category.CategoryName = dto.CategoryName;
+            category.IsActive = dto.IsActive;
+
+            category.UpdatedBy = int.Parse(adminIdString);
             category.UpdatedAt = DateTime.Now;
 
-            _context.Entry(category).State = EntityState.Modified;
             await _context.SaveChangesAsync();
-            return NoContent();
+            return Ok(new { message = "Cập nhật thành công!" });
         }
 
         [HttpDelete("{id}")]
@@ -76,15 +91,21 @@ namespace NguyenDucHieu_2123110416.Controllers
             var category = await _context.Categories.FindAsync(id);
             if (category == null || category.IsDeleted) return NotFound();
 
-            var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
             category.IsDeleted = true;
             category.DeletedAt = DateTime.Now;
-            category.DeletedBy = adminId;
+            category.DeletedBy = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
             category.IsActive = false;
 
             await _context.SaveChangesAsync();
             return Ok(new { message = $"Đã xóa danh mục '{category.CategoryName}'!" });
         }
+    }
+
+    // DTO đã loại bỏ trường Description cho chuẩn xác
+    public class CategoryUpdateDTO
+    {
+        public int Id { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
     }
 }

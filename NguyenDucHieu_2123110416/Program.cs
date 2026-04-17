@@ -12,6 +12,9 @@ var builder = WebApplication.CreateBuilder(args);
 // ====================================================================
 // 1. ĐĂNG KÝ CƠ SỞ DỮ LIỆU & SERVICES
 // ====================================================================
+// 👇 Dòng này cực kỳ quan trọng để bắt Log: Cung cấp thông tin User đang đăng nhập cho DbContext
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -79,41 +82,36 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // ====================================================================
-// 5. MỞ CỬA CORS CHO FRONTEND (RẤT QUAN TRỌNG)
+// 5. MỞ CỬA CORS CHO FRONTEND
 // ====================================================================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
         policy =>
         {
-            policy.AllowAnyOrigin()   // Cho phép mọi tên miền (kể cả localhost:5173) gọi tới
-                  .AllowAnyMethod()   // Cho phép mọi hành động (GET, POST, PUT, DELETE)
-                  .AllowAnyHeader();  // Cho phép mọi loại header
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
         });
 });
 
 var app = builder.Build();
 
 // ====================================================================
-// 6. CẤU HÌNH MIDDLEWARE (THỨ TỰ CỰC KỲ QUAN TRỌNG)
+// 6. CẤU HÌNH MIDDLEWARE
 // ====================================================================
-
-// Đã bỏ "if (IsDevelopment)" để Swagger chạy được trên Host
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Hieu Store API v1");
-    // Để khi vào link mtempurl.com/swagger là thấy ngay
     c.RoutePrefix = "swagger";
 });
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-// BẬT KÍCH HOẠT CORS BÊN DƯỚI (Phải nằm TRƯỚC Authentication/Authorization)
 app.UseCors("AllowAll");
 
-// BẬT CÔNG TẮC BẢO VỆ (Authentication phải nằm TRƯỚC Authorization)
 app.UseAuthentication();
 app.UseAuthorization();
 
