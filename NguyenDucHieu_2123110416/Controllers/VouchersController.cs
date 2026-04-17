@@ -9,7 +9,7 @@ namespace NguyenDucHieu_2123110416.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Chỉ Admin mới được quản lý Voucher
+    [Authorize] // Bảo mật mặc định cho toàn bộ class
     public class VouchersController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -19,13 +19,12 @@ namespace NguyenDucHieu_2123110416.Controllers
             _context = context;
         }
 
-        // Khách hàng lấy danh sách Voucher còn dùng được
+        // Khách hàng lấy danh sách Voucher còn dùng được (Không cần Token)
         [HttpGet]
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Voucher>>> GetVouchers()
         {
             var now = DateTime.Now;
-            // Đã dọn dẹp các cột cũ, chỉ giữ lại kiểm tra ExpiryDate
             return await _context.Vouchers
                 .Where(v => v.IsDeleted == false &&
                             v.IsActive == true &&
@@ -42,20 +41,25 @@ namespace NguyenDucHieu_2123110416.Controllers
             return voucher;
         }
 
+        // CHỈ ADMIN MỚI ĐƯỢC THÊM VOUCHER
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Voucher>> PostVoucher(Voucher voucher)
         {
             var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             voucher.CreatedBy = adminId;
             voucher.CreatedAt = DateTime.Now;
+            voucher.IsDeleted = false;
 
             _context.Vouchers.Add(voucher);
             await _context.SaveChangesAsync();
             return CreatedAtAction("GetVoucher", new { id = voucher.Id }, voucher);
         }
 
+        // CHỈ ADMIN MỚI ĐƯỢC SỬA VOUCHER
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> PutVoucher(int id, Voucher voucher)
         {
             if (id != voucher.Id) return BadRequest("ID không khớp");
@@ -69,7 +73,9 @@ namespace NguyenDucHieu_2123110416.Controllers
             return NoContent();
         }
 
+        // CHỈ ADMIN MỚI ĐƯỢC XÓA VOUCHER
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteVoucher(int id)
         {
             var voucher = await _context.Vouchers.FindAsync(id);
@@ -77,14 +83,12 @@ namespace NguyenDucHieu_2123110416.Controllers
 
             var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            // XÓA MỀM
             voucher.IsDeleted = true;
             voucher.DeletedAt = DateTime.Now;
             voucher.DeletedBy = adminId;
             voucher.IsActive = false;
 
             await _context.SaveChangesAsync();
-            // Đã sửa VoucherCode thành Code
             return Ok(new { message = $"Đã xóa voucher '{voucher.Code}' thành công!" });
         }
     }

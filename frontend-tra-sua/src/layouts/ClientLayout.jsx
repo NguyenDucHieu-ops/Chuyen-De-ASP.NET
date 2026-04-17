@@ -1,10 +1,9 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const ClientLayout = () => {
   const navigate = useNavigate();
   
-  // FIX LỖI "Cascading Renders": Khởi tạo state bằng hàm để lấy dữ liệu ngay lần render đầu tiên
   const [cartCount, setCartCount] = useState(() => {
     const saved = localStorage.getItem('hieu_cart');
     const cart = saved ? JSON.parse(saved) : [];
@@ -13,21 +12,32 @@ const ClientLayout = () => {
 
   const token = localStorage.getItem('hieu_store_token');
 
-  const updateCart = () => {
+  // Nâng cấp sync cart: dùng BroadcastChannel cho hiệu suất cao hơn storage event
+  const updateCart = useCallback(() => {
     const saved = localStorage.getItem('hieu_cart');
     const cart = saved ? JSON.parse(saved) : [];
     setCartCount(cart.reduce((sum, item) => sum + item.quantity, 0));
-  };
+  }, []);
 
   useEffect(() => {
-    window.addEventListener('storage', updateCart);
-    return () => window.removeEventListener('storage', updateCart);
-  }, []);
+    const channel = new BroadcastChannel('hieu_cart_channel');
+    const handleStorage = (e) => {
+      if (e.key === 'hieu_cart') updateCart();
+    };
+
+    window.addEventListener('storage', handleStorage);
+    channel.addEventListener('message', updateCart);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      channel.close();
+    };
+  }, [updateCart]);
 
   const handleLogout = () => {
     if (window.confirm("Bạn muốn đăng xuất khỏi HieuStore?")) {
       localStorage.removeItem('hieu_store_token');
-      navigate('/login'); // Đã dùng navigate ở đây để hết lỗi gạch đỏ
+      navigate('/login');
     }
   };
 
@@ -36,89 +46,127 @@ const ClientLayout = () => {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       return (payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || payload.role) === 'Admin';
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#fdfdfd] font-sans flex flex-col text-gray-900">
-      {/* HEADER NỔI (STICKY GLASS) */}
-      <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100 shadow-sm">
+    <div className="min-h-screen bg-[#fdfaf7] font-sans flex flex-col text-gray-900 overflow-x-hidden">
+      {/* HEADER GLASSMORPHISM CAO CẤP */}
+      <header className="bg-white/90 backdrop-blur-xl sticky top-0 z-50 border-b border-gray-100/80 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg group-hover:rotate-12 transition-all duration-300">🧋</div>
-            <span className="text-2xl font-black tracking-tighter uppercase italic">Hieu<span className="text-indigo-600">Store</span></span>
+            <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-3xl flex items-center justify-center text-white text-3xl shadow-xl group-hover:rotate-[12deg] group-active:scale-95 transition-all duration-300">
+              🧋
+            </div>
+            <span className="text-3xl font-black tracking-[-2px] uppercase italic text-gray-900">
+              Hieu<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">Store</span>
+            </span>
           </Link>
-          
-          <nav className="flex gap-10 items-center">
-            <Link to="/" className="text-xs font-black uppercase tracking-widest text-gray-500 hover:text-indigo-600 transition-colors">Thực đơn</Link>
-            <Link to="/contact" className="text-xs font-black uppercase tracking-widest text-gray-500 hover:text-indigo-600 transition-colors">Liên hệ</Link>
-            
-            <Link to="/cart" className="relative group p-2">
-              <span className="text-2xl transition-transform group-hover:scale-110 block">🛒</span>
+
+          <nav className="flex items-center gap-10 text-sm">
+            {/* ĐÃ SỬA LINK THỰC ĐƠN THÀNH /products */}
+            <Link 
+              to="/products" 
+              className="font-semibold text-gray-600 hover:text-indigo-600 transition-all duration-200 relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-indigo-600 after:w-0 hover:after:w-full after:transition-all"
+            >
+              THỰC ĐƠN
+            </Link>
+            <Link 
+              to="/contact" 
+              className="font-semibold text-gray-600 hover:text-indigo-600 transition-all duration-200 relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-indigo-600 after:w-0 hover:after:w-full after:transition-all"
+            >
+              LIÊN HỆ
+            </Link>
+
+            <Link to="/cart" className="relative group p-3 -mr-3">
+              <span className="text-3xl transition-transform group-hover:scale-110 duration-300 block">🛒</span>
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center font-black shadow-lg animate-bounce">
+                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-xs font-black w-6 h-6 flex items-center justify-center rounded-full shadow-lg ring-2 ring-white animate-pulse">
                   {cartCount}
                 </span>
               )}
             </Link>
 
-            <div className="w-px h-6 bg-gray-200"></div>
+            <div className="w-px h-7 bg-gray-200"></div>
 
             {token ? (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-5">
                 {isAdmin() && (
-                  <Link to="/admin" className="text-[10px] font-black uppercase text-indigo-600 underline">Quản trị</Link>
+                  <Link to="/admin" className="text-xs font-bold uppercase tracking-widest text-indigo-600 hover:underline">Quản trị</Link>
                 )}
-                <Link to="/profile" className="w-10 h-10 rounded-full border-2 border-indigo-600 p-0.5 shadow-md hover:scale-105 transition-transform">
-                   <img src="https://ui-avatars.com/api/?name=Hieu&background=4f46e5&color=fff" className="w-full h-full rounded-full" alt="Avatar" />
+                
+                <Link to="/profile" className="relative w-10 h-10 rounded-2xl overflow-hidden border-2 border-white shadow-md hover:scale-110 transition-transform duration-300 ring-1 ring-gray-100">
+                  <img 
+                    src="https://ui-avatars.com/api/?name=Nguyen+Duc+Hieu&background=4f46e5&color=fff&bold=true" 
+                    className="w-full h-full object-cover" 
+                    alt="Avatar" 
+                  />
                 </Link>
-                <button onClick={handleLogout} className="text-[10px] font-black uppercase text-rose-500 hover:underline">Thoát</button>
+
+                <button 
+                  onClick={handleLogout} 
+                  className="text-xs font-bold uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors"
+                >
+                  Thoát
+                </button>
               </div>
             ) : (
-              <Link to="/login" className="bg-gray-900 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-indigo-600 transition-all active:scale-95">Đăng nhập</Link>
+              <Link 
+                to="/login" 
+                className="bg-gradient-to-r from-gray-900 to-black text-white px-9 py-3.5 rounded-3xl font-bold text-xs uppercase tracking-[0.125em] shadow-xl hover:from-indigo-600 hover:to-violet-600 active:scale-[0.97] transition-all duration-300"
+              >
+                Đăng nhập
+              </Link>
             )}
           </nav>
         </div>
       </header>
 
-      <main className="flex-grow max-w-7xl mx-auto px-6 py-10 w-full animate-fadeIn">
+      <main className="flex-grow max-w-7xl mx-auto px-6 py-12 w-full">
         <Outlet />
       </main>
 
-      {/* FOOTER ĐẲNG CẤP */}
-      <footer className="bg-gray-900 text-gray-400 py-16">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12 border-b border-gray-800 pb-16 mb-8">
-          <div className="col-span-1 md:col-span-1">
-             <h3 className="text-white text-2xl font-black italic mb-6 uppercase tracking-tighter">Hieu<span className="text-indigo-500">Store</span></h3>
-             <p className="text-sm leading-relaxed pr-4">Hệ thống phân phối trà sữa hàng đầu dành cho sinh viên ITC. Chất lượng từ tâm, giao hàng xứng tầm.</p>
+      {/* FOOTER PREMIUM */}
+      <footer className="bg-gray-950 text-gray-400 py-20">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-12">
+          <div className="md:col-span-5">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-2xl flex items-center justify-center text-white text-2xl">🧋</div>
+              <span className="text-3xl font-black tracking-tighter text-white">HieuStore</span>
+            </div>
+            <p className="max-w-md text-sm leading-relaxed">
+              Trà sữa cao cấp dành riêng cho cộng đồng sinh viên ITC. 
+              Nguyên liệu tươi ngon – Phục vụ từ tâm – Giao hàng nhanh chóng.
+            </p>
           </div>
-          <div>
-             <h4 className="text-white font-black uppercase text-xs tracking-widest mb-6 border-l-4 border-indigo-600 pl-3">Khám phá</h4>
-             <ul className="space-y-4 text-sm font-bold">
-                <li><Link to="/" className="hover:text-indigo-400 transition-colors">Thực đơn</Link></li>
-                <li><Link to="/contact" className="hover:text-indigo-400 transition-colors">Góp ý dịch vụ</Link></li>
-                <li className="hover:text-indigo-400 transition-colors cursor-pointer">Hệ thống cửa hàng</li>
-             </ul>
+
+          <div className="md:col-span-3">
+            <h4 className="uppercase text-xs tracking-[2px] font-bold text-white mb-6">Khám phá</h4>
+            <ul className="space-y-4 text-sm">
+              {/* ĐÃ SỬA LINK THỰC ĐƠN Ở FOOTER THÀNH /products */}
+              <li><Link to="/products" className="hover:text-white transition-colors">Thực đơn</Link></li>
+              <li><Link to="/contact" className="hover:text-white transition-colors">Góp ý</Link></li>
+              <li className="hover:text-white transition-colors cursor-pointer">Cửa hàng</li>
+            </ul>
           </div>
-          <div>
-             <h4 className="text-white font-black uppercase text-xs tracking-widest mb-6 border-l-4 border-indigo-600 pl-3">Hỗ trợ</h4>
-             <ul className="space-y-4 text-sm font-bold">
-                <li className="hover:text-indigo-400 transition-colors cursor-pointer">Theo dõi đơn hàng</li>
-                <li className="hover:text-indigo-400 transition-colors cursor-pointer">Chính sách bảo mật</li>
-                <li className="hover:text-indigo-400 transition-colors cursor-pointer">Khiếu nại sản phẩm</li>
-             </ul>
-          </div>
-          <div>
-             <h4 className="text-white font-black uppercase text-xs tracking-widest mb-6 border-l-4 border-indigo-600 pl-3">Trụ sở</h4>
-             <p className="text-sm italic mb-2">📍 Phước Long B, TP. Thủ Đức, TP. HCM</p>
-             <p className="text-sm italic mb-4">📞 Hotline: 1900 xxxx</p>
-             <div className="flex gap-4">
-                <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center font-black shadow-lg">F</div>
-                <div className="w-8 h-8 bg-rose-500 text-white rounded-lg flex items-center justify-center font-black shadow-lg">I</div>
-             </div>
+
+          <div className="md:col-span-4">
+            <h4 className="uppercase text-xs tracking-[2px] font-bold text-white mb-6">Liên hệ</h4>
+            <p className="text-sm mb-2">📍 Phước Long B, TP. Thủ Đức, TP. HCM</p>
+            <p className="text-sm mb-8">📞 Hotline: 1900 xxxx</p>
+            
+            <div className="flex gap-4">
+              <div className="w-11 h-11 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center text-xl transition-all cursor-pointer">𝕏</div>
+              <div className="w-11 h-11 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center text-xl transition-all cursor-pointer">📸</div>
+            </div>
           </div>
         </div>
-        <p className="text-center text-[10px] font-black uppercase tracking-[0.5em] opacity-40">© 2026 Crafted with pride by Nguyen Duc Hieu</p>
+
+        <div className="border-t border-gray-900 mt-16 pt-8 text-center text-[10px] tracking-[1px] font-mono opacity-50">
+          © 2026 Nguyen Duc Hieu • Crafted with passion for better bubble tea experience
+        </div>
       </footer>
     </div>
   );

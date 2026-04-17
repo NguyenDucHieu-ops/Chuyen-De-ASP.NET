@@ -4,10 +4,12 @@ import AdminLayout from './layouts/AdminLayout';
 
 // Client Pages
 import HomePage from './pages/client/home/HomePage';
+import ProductsPage from './pages/client/products/ProductsPage'; // MỚI: Trang Thực đơn
+import ProductDetailPage from './pages/client/products/ProductDetailPage'; // MỚI: Trang Chi tiết sản phẩm
 import CartPage from './pages/client/cart/CartPage';
 import ProfilePage from './pages/client/profile/ProfilePage';
 import ContactPage from './pages/client/contact/ContactPage';
-import PaymentResult from './pages/client/cart/PaymentResult'; // MỚI
+import PaymentResult from './pages/client/cart/PaymentResult'; 
 
 // Auth & Admin
 import LoginPage from './pages/auth/LoginPage';
@@ -33,10 +35,15 @@ function App() {
         {/* ================= GIAO DIỆN KHÁCH HÀNG ================= */}
         <Route path="/" element={<ClientLayout />}>
           <Route index element={<HomePage />} />
+          
+          {/* ĐÃ THÊM 2 ĐƯỜNG DẪN MỚI CHO TRANG SẢN PHẨM Ở ĐÂY */}
+          <Route path="products" element={<ProductsPage />} /> 
+          <Route path="product/:id" element={<ProductDetailPage />} /> 
+
           <Route path="cart" element={<CartPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="contact" element={<ContactPage />} />
-          <Route path="payment-result" element={<PaymentResult />} /> {/* MỚI */}
+          <Route path="payment-result" element={<PaymentResult />} /> 
         </Route>
         
         {/* ================= GIAO DIỆN QUẢN TRỊ ================= */}

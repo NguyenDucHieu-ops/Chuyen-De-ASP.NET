@@ -9,7 +9,7 @@ namespace NguyenDucHieu_2123110416.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Khóa toàn bộ: Phải có Token mới được vào
+    [Authorize]
     public class CategoriesController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -19,7 +19,6 @@ namespace NguyenDucHieu_2123110416.Controllers
             _context = context;
         }
 
-        // Khách hàng xem danh mục: Không cần Token, không xem cái đã xóa
         [HttpGet]
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
@@ -41,13 +40,14 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Category>> PostCategory(Category category)
         {
-            // Móc ID Admin từ Token
             var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             category.CreatedBy = adminId;
             category.CreatedAt = DateTime.Now;
+            category.IsDeleted = false;
 
             _context.Categories.Add(category);
             await _context.SaveChangesAsync();
@@ -55,6 +55,7 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> PutCategory(int id, Category category)
         {
             if (id != category.Id) return BadRequest("ID không khớp!");
@@ -68,8 +69,8 @@ namespace NguyenDucHieu_2123110416.Controllers
             return NoContent();
         }
 
-        // XÓA MỀM 1 DÒNG
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteCategory(int id)
         {
             var category = await _context.Categories.FindAsync(id);
@@ -83,34 +84,7 @@ namespace NguyenDucHieu_2123110416.Controllers
             category.IsActive = false;
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = $"Đã xóa danh mục '{category.CategoryName}' thành công!" });
-        }
-
-        // XÓA MỀM NHIỀU DÒNG
-        [HttpDelete("multiple")]
-        public async Task<IActionResult> DeleteMultipleCategories([FromQuery] string ids)
-        {
-            if (string.IsNullOrWhiteSpace(ids)) return BadRequest("Vui lòng nhập danh sách ID!");
-
-            var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var idList = ids.Split(',').Select(i => i.Trim()).Where(i => int.TryParse(i, out _)).Select(int.Parse).ToList();
-
-            var categoriesToDelete = await _context.Categories
-                .Where(c => idList.Contains(c.Id) && c.IsDeleted == false)
-                .ToListAsync();
-
-            if (!categoriesToDelete.Any()) return NotFound("Không tìm thấy danh mục nào!");
-
-            foreach (var item in categoriesToDelete)
-            {
-                item.IsDeleted = true;
-                item.DeletedAt = DateTime.Now;
-                item.DeletedBy = adminId;
-                item.IsActive = false;
-            }
-
-            await _context.SaveChangesAsync();
-            return Ok(new { message = $"Đã xóa thành công {categoriesToDelete.Count} danh mục!" });
+            return Ok(new { message = $"Đã xóa danh mục '{category.CategoryName}'!" });
         }
     }
 }

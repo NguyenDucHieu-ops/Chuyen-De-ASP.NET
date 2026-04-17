@@ -29,16 +29,14 @@ namespace NguyenDucHieu_2123110416.Controllers
             {
                 var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-                // 1. KIỂM TRA ĐIỀU KIỆN: ĐÃ MUA HÀNG CHƯA?
                 var hasOrdered = await _context.Orders.AnyAsync(o =>
                     o.Id == request.OrderId &&
                     o.UserId == userId &&
-                    o.OrderStatus == "Completed"); // Chỉ đơn "Hoàn thành" mới được review
+                    o.OrderStatus == "Completed");
 
                 if (!hasOrdered)
-                    return BadRequest(new { error = "Bạn chỉ được đánh giá những sản phẩm đã mua và giao hàng thành công!" });
+                    return BadRequest(new { error = "Bạn chỉ được đánh giá những sản phẩm đã mua thành công!" });
 
-                // 2. TẠO REVIEW
                 var review = new Review
                 {
                     UserId = userId,
@@ -50,7 +48,6 @@ namespace NguyenDucHieu_2123110416.Controllers
                     CreatedBy = userId
                 };
 
-                // 3. XỬ LÝ UPLOAD NHIỀU ẢNH
                 if (request.Images != null && request.Images.Count > 0)
                 {
                     string rootPath = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
@@ -62,14 +59,12 @@ namespace NguyenDucHieu_2123110416.Controllers
                         string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
                         string filePath = Path.Combine(folderPath, fileName);
                         using (var stream = new FileStream(filePath, FileMode.Create)) { await file.CopyToAsync(stream); }
-
                         review.ReviewImages.Add(new ReviewImage { ImageUrl = $"/images/reviews/{fileName}" });
                     }
                 }
 
                 _context.Reviews.Add(review);
                 await _context.SaveChangesAsync();
-
                 return Ok(new { message = "Đánh giá thành công!", review });
             }
             catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
@@ -89,14 +84,21 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteReview(int id)
         {
             var review = await _context.Reviews.FindAsync(id);
-            if (review == null) return NotFound();
+            if (review == null || review.IsDeleted) return NotFound();
 
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
 
-            // Chỉ người tạo hoặc Admin mới được xóa
+            // Kiểm tra: Phải là chủ hoặc Admin mới được xóa
+            if (review.UserId != userId && userRole != "Admin")
+            {
+                return Forbid();
+            }
+
             review.IsDeleted = true;
             review.DeletedAt = DateTime.Now;
             review.DeletedBy = userId;
