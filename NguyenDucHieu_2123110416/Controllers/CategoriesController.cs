@@ -49,7 +49,6 @@ namespace NguyenDucHieu_2123110416.Controllers
             var category = new Category
             {
                 CategoryName = dto.CategoryName,
-                // Đã gỡ thuộc tính Description vì Model Category của sếp không có
                 IsActive = dto.IsActive,
                 IsDeleted = false,
                 CreatedBy = int.Parse(adminIdString),
@@ -73,7 +72,7 @@ namespace NguyenDucHieu_2123110416.Controllers
             var adminIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(adminIdString)) return Unauthorized();
 
-            // Cập nhật an toàn (Đã gỡ Description)
+            // Cập nhật an toàn 
             category.CategoryName = dto.CategoryName;
             category.IsActive = dto.IsActive;
 
@@ -101,7 +100,6 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
     }
 
-    // DTO đã loại bỏ trường Description cho chuẩn xác
     public class CategoryUpdateDTO
     {
         public int Id { get; set; }

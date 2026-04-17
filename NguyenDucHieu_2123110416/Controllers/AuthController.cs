@@ -10,7 +10,6 @@ namespace NguyenDucHieu_2123110416.Controllers
     {
         private readonly IAuthService _authService;
 
-        // Bơm cái Service bọc thép lúc nãy vào đây
         public AuthController(IAuthService authService)
         {
             _authService = authService;
@@ -26,7 +25,6 @@ namespace NguyenDucHieu_2123110416.Controllers
             }
             catch (Exception ex)
             {
-                // Nếu trùng email hoặc lỗi gì thì quăng ra đây
                 return BadRequest(new { error = ex.Message });
             }
         }

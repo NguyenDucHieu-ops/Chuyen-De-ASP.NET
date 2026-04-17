@@ -7,7 +7,7 @@ namespace NguyenDucHieu_2123110416.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Admin")] // Bảo mật tuyệt đối: Chỉ Admin mới được xem Camera
+    [Authorize(Roles = "Admin")] 
     public class ActivityLogsController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -37,7 +37,7 @@ namespace NguyenDucHieu_2123110416.Controllers
                         log.NewValues
                     })
                 .OrderByDescending(l => l.Timestamp)
-                .Take(100) // Lấy 100 hành động mới nhất cho web chạy mượt
+                .Take(100) 
                 .ToListAsync();
 
             return Ok(logs);

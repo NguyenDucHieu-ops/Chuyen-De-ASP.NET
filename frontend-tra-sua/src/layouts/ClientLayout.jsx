@@ -12,7 +12,6 @@ const ClientLayout = () => {
 
   const token = localStorage.getItem('hieu_store_token');
 
-  // Nâng cấp sync cart: dùng BroadcastChannel cho hiệu suất cao hơn storage event
   const updateCart = useCallback(() => {
     const saved = localStorage.getItem('hieu_cart');
     const cart = saved ? JSON.parse(saved) : [];
@@ -53,7 +52,7 @@ const ClientLayout = () => {
 
   return (
     <div className="min-h-screen bg-[#fdfaf7] font-sans flex flex-col text-gray-900 overflow-x-hidden">
-      {/* HEADER GLASSMORPHISM CAO CẤP */}
+      {/* HEADER */}
       <header className="bg-white/90 backdrop-blur-xl sticky top-0 z-50 border-b border-gray-100/80 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group">
@@ -66,17 +65,14 @@ const ClientLayout = () => {
           </Link>
 
           <nav className="flex items-center gap-10 text-sm">
-            {/* ĐÃ SỬA LINK THỰC ĐƠN THÀNH /products */}
-            <Link 
-              to="/products" 
-              className="font-semibold text-gray-600 hover:text-indigo-600 transition-all duration-200 relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-indigo-600 after:w-0 hover:after:w-full after:transition-all"
-            >
+            <Link to="/products" className="font-semibold text-gray-600 hover:text-indigo-600 transition-all duration-200 relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-indigo-600 after:w-0 hover:after:w-full after:transition-all">
               THỰC ĐƠN
             </Link>
-            <Link 
-              to="/contact" 
-              className="font-semibold text-gray-600 hover:text-indigo-600 transition-all duration-200 relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-indigo-600 after:w-0 hover:after:w-full after:transition-all"
-            >
+            {/* 👇 THÊM LINK TIN TỨC CHO KHÁCH HÀNG */}
+            <Link to="/articles" className="font-semibold text-gray-600 hover:text-indigo-600 transition-all duration-200 relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-indigo-600 after:w-0 hover:after:w-full after:transition-all">
+              TIN TỨC
+            </Link>
+            <Link to="/contact" className="font-semibold text-gray-600 hover:text-indigo-600 transition-all duration-200 relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-indigo-600 after:w-0 hover:after:w-full after:transition-all">
               LIÊN HỆ
             </Link>
 
@@ -98,25 +94,15 @@ const ClientLayout = () => {
                 )}
                 
                 <Link to="/profile" className="relative w-10 h-10 rounded-2xl overflow-hidden border-2 border-white shadow-md hover:scale-110 transition-transform duration-300 ring-1 ring-gray-100">
-                  <img 
-                    src="https://ui-avatars.com/api/?name=Nguyen+Duc+Hieu&background=4f46e5&color=fff&bold=true" 
-                    className="w-full h-full object-cover" 
-                    alt="Avatar" 
-                  />
+                  <img src="https://ui-avatars.com/api/?name=Nguyen+Duc+Hieu&background=4f46e5&color=fff&bold=true" className="w-full h-full object-cover" alt="Avatar" />
                 </Link>
 
-                <button 
-                  onClick={handleLogout} 
-                  className="text-xs font-bold uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors"
-                >
+                <button onClick={handleLogout} className="text-xs font-bold uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors">
                   Thoát
                 </button>
               </div>
             ) : (
-              <Link 
-                to="/login" 
-                className="bg-gradient-to-r from-gray-900 to-black text-white px-9 py-3.5 rounded-3xl font-bold text-xs uppercase tracking-[0.125em] shadow-xl hover:from-indigo-600 hover:to-violet-600 active:scale-[0.97] transition-all duration-300"
-              >
+              <Link to="/login" className="bg-gradient-to-r from-gray-900 to-black text-white px-9 py-3.5 rounded-3xl font-bold text-xs uppercase tracking-[0.125em] shadow-xl hover:from-indigo-600 hover:to-violet-600 active:scale-[0.97] transition-all duration-300">
                 Đăng nhập
               </Link>
             )}
@@ -128,7 +114,7 @@ const ClientLayout = () => {
         <Outlet />
       </main>
 
-      {/* FOOTER PREMIUM */}
+      {/* FOOTER */}
       <footer className="bg-gray-950 text-gray-400 py-20">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-12">
           <div className="md:col-span-5">
@@ -145,10 +131,9 @@ const ClientLayout = () => {
           <div className="md:col-span-3">
             <h4 className="uppercase text-xs tracking-[2px] font-bold text-white mb-6">Khám phá</h4>
             <ul className="space-y-4 text-sm">
-              {/* ĐÃ SỬA LINK THỰC ĐƠN Ở FOOTER THÀNH /products */}
               <li><Link to="/products" className="hover:text-white transition-colors">Thực đơn</Link></li>
+              <li><Link to="/articles" className="hover:text-white transition-colors">Tin tức & Khuyến mãi</Link></li> {/* 👈 MỚI THÊM */}
               <li><Link to="/contact" className="hover:text-white transition-colors">Góp ý</Link></li>
-              <li className="hover:text-white transition-colors cursor-pointer">Cửa hàng</li>
             </ul>
           </div>
 

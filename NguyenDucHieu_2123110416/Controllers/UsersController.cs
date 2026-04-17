@@ -84,7 +84,6 @@ namespace NguyenDucHieu_2123110416.Controllers
             {
                 FullName = dto.FullName,
                 Email = dto.Email,
-                // Trong thực tế cần Hash password, nhưng đây mình làm demo theo ý sếp
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
                 RoleId = dto.RoleId,
                 IsActive = true,
@@ -126,7 +125,7 @@ namespace NguyenDucHieu_2123110416.Controllers
             if (user == null) return NotFound();
 
             // Ghi log người xóa (Nếu cần)
-            // user.DeletedBy = ...
+           
 
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();

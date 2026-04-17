@@ -79,6 +79,15 @@ namespace NguyenDucHieu_2123110416.Controllers
                 .Include(r => r.ReviewImages)
                 .Where(r => r.ProductId == productId && r.IsDeleted == false)
                 .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new {
+                    r.Id,
+                    r.Rating,
+                    r.Comment,
+                    r.CreatedAt,
+                    r.OrderId,
+                    CustomerName = r.User != null ? r.User.FullName : "Ẩn danh",
+                    Images = r.ReviewImages.Select(img => img.ImageUrl).ToList()
+                })
                 .ToListAsync();
             return Ok(reviews);
         }

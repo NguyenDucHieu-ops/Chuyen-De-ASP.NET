@@ -9,7 +9,6 @@
         public DateTime? UpdatedAt { get; set; }
         public int? UpdatedBy { get; set; } // Lưu ID của ông Admin nào sửa
 
-        // XÓA MỀM (Chỉ ẩn đi chứ không xóa khỏi ổ cứng)
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletedAt { get; set; }
         public int? DeletedBy { get; set; }

@@ -12,7 +12,6 @@ namespace NguyenDucHieu_2123110416.DTOs
         public decimal BasePrice { get; set; }
         public decimal SizeUpPrice { get; set; }
 
-        // 👇 THÊM DÒNG NÀY (Để hứng data XL từ React gửi qua)
         public decimal SizeXlPrice { get; set; }
 
         public bool HasOptions { get; set; }

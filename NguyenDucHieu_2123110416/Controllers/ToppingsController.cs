@@ -21,7 +21,6 @@ namespace NguyenDucHieu_2123110416.Controllers
         public async Task<ActionResult<IEnumerable<Topping>>> GetToppings() =>
             await _context.Toppings.Where(t => t.IsDeleted == false).ToListAsync();
 
-        // 2. Lấy chi tiết 1 Topping (Cần thiết để hàm Post không bị lỗi 500)
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<ActionResult<Topping>> GetTopping(int id)
@@ -44,11 +43,10 @@ namespace NguyenDucHieu_2123110416.Controllers
             _context.Toppings.Add(topping);
             await _context.SaveChangesAsync();
 
-            // nameof(GetTopping) sẽ tự lấy tên hàm số 2 ở trên, cực chuẩn
             return CreatedAtAction(nameof(GetTopping), new { id = topping.Id }, topping);
         }
 
-        // 4. Cập nhật Topping (Admin - Để cái nút Sửa bên React nó chạy)
+        // 4. Cập nhật Topping 
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> PutTopping(int id, Topping topping)
@@ -74,7 +72,7 @@ namespace NguyenDucHieu_2123110416.Controllers
             return NoContent();
         }
 
-        // 5. Xóa Topping (Xóa mềm)
+        // 5. Xóa Topping 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteTopping(int id)

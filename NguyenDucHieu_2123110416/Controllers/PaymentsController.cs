@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using NguyenDucHieu_2123110416.Data;
 using NguyenDucHieu_2123110416.Models;
-using NguyenDucHieu_2123110416.Services; // Nhớ tạo file VnPayLibrary trong thư mục Services
+using NguyenDucHieu_2123110416.Services; 
 
 namespace NguyenDucHieu_2123110416.Controllers
 {
@@ -51,7 +51,7 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         // ========================================================
-        // 🛠️ CÁC HÀM CRUD CŨ CỦA HIẾU (GIỮ NGUYÊN 100%)
+        // 🛠️ CÁC HÀM CRUD CŨ CỦA HIẾU 
         // ========================================================
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Payment>>> GetPayments() => await _context.Payments.ToListAsync();

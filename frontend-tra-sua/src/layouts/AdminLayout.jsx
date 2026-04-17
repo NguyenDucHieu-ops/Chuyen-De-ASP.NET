@@ -22,12 +22,16 @@ const AdminLayout = () => {
     reviews: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>,
     payments: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75-3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5h15a2.25 2.25 0 002.25-2.25V14.25" /></svg>,
     contacts: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>,
-    // 👇 THÊM ICON LOG HOẠT ĐỘNG
-    activityLogs: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+    activityLogs: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
+    articles: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>,
+    // 👇 ICON BANNER MỚI
+    banners: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
   };
 
   const menuItems = [
     { path: '/admin', icon: icons.dashboard, label: 'Tổng Quan' },
+    { path: '/admin/banners', icon: icons.banners, label: 'Quản Lý Banner' }, // 👈 MỚI THÊM
+    { path: '/admin/articles', icon: icons.articles, label: 'Bài Viết & Tin Tức' },
     { path: '/admin/categories', icon: icons.categories, label: 'Quản Lý Danh Mục' },
     { path: '/admin/products', icon: icons.products, label: 'Quản Lý Sản Phẩm' },
     { path: '/admin/toppings', icon: icons.toppings, label: 'Quản Lý Topping' },
@@ -37,13 +41,11 @@ const AdminLayout = () => {
     { path: '/admin/reviews', icon: icons.reviews, label: 'Đánh Giá (Reviews)' },
     { path: '/admin/payments', icon: icons.payments, label: 'Giao Dịch (Payments)' },
     { path: '/admin/contacts', icon: icons.contacts, label: 'Hòm Thư Liên Hệ' },
-    // 👇 THÊM ĐƯỜNG DẪN VÀO MENU 
     { path: '/admin/activity-logs', icon: icons.activityLogs, label: 'Nhật Ký Hoạt Động' }, 
   ];
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans text-gray-800">
-      
       {/* SIDEBAR */}
       <aside className="w-72 bg-gray-900 text-white flex flex-col shadow-2xl z-20 overflow-hidden">
         <div className="p-8 text-3xl font-black border-b border-gray-800 text-center tracking-tighter italic">
@@ -54,18 +56,8 @@ const AdminLayout = () => {
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path));
             return (
-              <Link 
-                key={item.path}
-                to={item.path} 
-                className={`flex items-center gap-4 p-4 rounded-xl transition-all duration-300 font-bold group ${
-                  isActive 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/40' 
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`}
-              >
-                <div className={`transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-white' : 'text-blue-500'}`}>
-                    {item.icon}
-                </div>
+              <Link key={item.path} to={item.path} className={`flex items-center gap-4 p-4 rounded-xl transition-all duration-300 font-bold group ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/40' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>
+                <div className={`transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-white' : 'text-blue-500'}`}>{item.icon}</div>
                 <span className="text-sm tracking-wide">{item.label}</span>
               </Link>
             )
@@ -73,17 +65,13 @@ const AdminLayout = () => {
         </nav>
         
         <div className="p-6 border-t border-gray-800">
-          <button 
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 p-4 bg-red-500/10 text-red-500 rounded-xl font-black hover:bg-red-500 hover:text-white transition-all duration-300 shadow-sm"
-          >
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 p-4 bg-red-500/10 text-red-500 rounded-xl font-black hover:bg-red-500 hover:text-white transition-all shadow-sm">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
             <span className="uppercase text-xs tracking-widest">Đăng Xuất</span>
           </button>
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-20 bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-between px-10 sticky top-0 z-10 border-b border-gray-100">
           <div className="flex items-center gap-4">
@@ -92,18 +80,12 @@ const AdminLayout = () => {
                 {menuItems.find(i => (location.pathname === i.path || (i.path !== '/admin' && location.pathname.startsWith(i.path))))?.label || "Hệ Thống Quản Trị"}
              </h2>
           </div>
-          
-          <div className="flex items-center gap-6">
-            <div className="text-right hidden md:block border-r border-gray-100 pr-6">
+          <div className="flex items-center gap-6 text-right">
+            <div className="hidden md:block border-r border-gray-100 pr-6">
               <p className="text-sm font-black text-gray-800">Nguyen Duc Hieu</p>
               <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest mt-1">HieuStore Owner</p>
             </div>
-            <div className="relative group cursor-pointer">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center font-black text-xl shadow-lg border-2 border-white transition-transform group-hover:rotate-6">
-                H
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
-            </div>
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center font-black text-xl shadow-lg border-2 border-white transition-transform hover:rotate-6 cursor-pointer">H</div>
           </div>
         </header>
 

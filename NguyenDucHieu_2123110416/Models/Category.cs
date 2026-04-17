@@ -2,7 +2,6 @@
 
 namespace NguyenDucHieu_2123110416.Models
 {
-    // Kế thừa BaseAuditEntity để có 7 cột theo dõi
     public class Category : BaseAuditEntity
     {
         [Key] public int Id { get; set; }

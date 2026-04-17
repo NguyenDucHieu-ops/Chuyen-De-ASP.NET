@@ -66,11 +66,10 @@ namespace NguyenDucHieu_2123110416.Controllers
 
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> PutProduct(int id, [FromBody] ProductUpdateDTO dto)
+        // 💡 ĐỔI TỪ [FromBody] SANG [FromForm] ĐỂ NHẬN ĐƯỢC FILE ẢNH
+        public async Task<IActionResult> PutProduct(int id, [FromForm] ProductUpdateDTO dto)
         {
-            // Nếu dữ liệu gửi lên sai kiểu, nó sẽ báo 400 ngay tại đây
             if (!ModelState.IsValid) return BadRequest(ModelState);
-
             if (id != dto.Id) return BadRequest(new { error = "ID lệch rồi sếp!" });
 
             var product = await _context.Products.FindAsync(id);
@@ -88,6 +87,21 @@ namespace NguyenDucHieu_2123110416.Controllers
                 product.IsActive = dto.IsActive;
                 product.UpdatedBy = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
                 product.UpdatedAt = DateTime.Now;
+
+                // 💡 XỬ LÝ CẬP NHẬT ẢNH MỚI (NẾU CÓ)
+                if (dto.ImageFile != null && dto.ImageFile.Length > 0)
+                {
+                    string folderPath = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "images", "products");
+                    if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
+
+                    string fileName = Guid.NewGuid().ToString() + Path.GetExtension(dto.ImageFile.FileName);
+                    using (var stream = new FileStream(Path.Combine(folderPath, fileName), FileMode.Create))
+                    {
+                        await dto.ImageFile.CopyToAsync(stream);
+                    }
+                    // Cập nhật đường dẫn ảnh mới
+                    product.ImageUrl = $"/images/products/{fileName}";
+                }
 
                 await _context.SaveChangesAsync();
                 return Ok(new { message = "Cập nhật xong rồi sếp!" });
@@ -107,6 +121,7 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
     }
 
+    // 💡 THÊM ImageFile VÀO DTO ĐỂ NHẬN ẢNH TỪ FRONTEND
     public class ProductUpdateDTO
     {
         public int Id { get; set; }
@@ -118,5 +133,6 @@ namespace NguyenDucHieu_2123110416.Controllers
         public decimal SizeXlPrice { get; set; }
         public bool HasOptions { get; set; }
         public bool IsActive { get; set; }
+        public IFormFile? ImageFile { get; set; } 
     }
 }

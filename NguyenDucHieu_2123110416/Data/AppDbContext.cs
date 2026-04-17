@@ -39,7 +39,7 @@ namespace NguyenDucHieu_2123110416.Data
         public DbSet<Review> Reviews { get; set; }
         public DbSet<ReviewImage> ReviewImages { get; set; }
         public DbSet<Banner> Banners { get; set; }
-
+        public DbSet<Article> Articles { get; set; }
         // 👇 BẢNG LƯU NHẬT KÝ HỆ THỐNG
         public DbSet<ActivityLog> ActivityLogs { get; set; }
 
@@ -99,7 +99,7 @@ namespace NguyenDucHieu_2123110416.Data
             var userIdString = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
             int currentUserId = string.IsNullOrEmpty(userIdString) ? 0 : int.Parse(userIdString);
 
-            // 1. CẬP NHẬT BaseAuditEntity (Giữ nguyên logic cũ của sếp)
+            // 1. CẬP NHẬT BaseAuditEntity 
             var auditEntities = ChangeTracker.Entries().Where(e => e.Entity is BaseAuditEntity && (e.State == EntityState.Added || e.State == EntityState.Modified));
             foreach (var entityEntry in auditEntities)
             {
@@ -152,7 +152,7 @@ namespace NguyenDucHieu_2123110416.Data
                 logEntries.Add(new Tuple<Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry, ActivityLog>(entry, activityLog));
             }
 
-            // 3. LƯU THAY ĐỔI CHÍNH VÀO DB TRƯỚC (Để lấy được ID của các bản ghi vừa thêm mới)
+            // 3. LƯU THAY ĐỔI CHÍNH VÀO DB TRƯỚC 
             var result = await base.SaveChangesAsync(cancellationToken);
 
             // 4. SAU KHI CÓ ID RỒI THÌ LƯU VÀO BẢNG LOG

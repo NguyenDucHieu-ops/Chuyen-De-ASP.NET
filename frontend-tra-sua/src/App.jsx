@@ -10,6 +10,8 @@ import CartPage from './pages/client/cart/CartPage';
 import ProfilePage from './pages/client/profile/ProfilePage';
 import ContactPage from './pages/client/contact/ContactPage';
 import PaymentResult from './pages/client/cart/PaymentResult'; 
+import ArticlesPage from './pages/client/articles/ArticlesPage';
+import ArticleDetailPage from './pages/client/articles/ArticleDetailPage';
 
 // Auth & Admin
 import LoginPage from './pages/auth/LoginPage';
@@ -25,20 +27,21 @@ import ReviewManager from './pages/admin/reviews/ReviewManager';
 import PaymentManager from './pages/admin/payments/PaymentManager';
 import ContactManager from './pages/admin/contacts/ContactManager';
 
-// 👇 NHỚ IMPORT FILE LOG VÀO ĐÂY NHA SẾP (Kiểm tra lại đường dẫn import tùy vào chỗ sếp đặt file nhé, ví dụ bên dưới là mình gom nó vô chung chỗ với mấy cái Manager kia)
+// Quản lý Mới
 import ActivityLogManager from "./components/ActivityLogManager";
-// Security Component
+import ArticleManager from "./pages/admin/articles/ArticleManager"; 
+import BannerManager from "./pages/admin/banners/BannerManager"; // 👈 IMPORT BANNER
+
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Routes: Đăng nhập/Đăng ký ai cũng vào được */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* ================= GIAO DIỆN KHÁCH HÀNG ================= */}
+        {/* CLIENT ROUTES */}
         <Route path="/" element={<ClientLayout />}>
           <Route index element={<HomePage />} />
           <Route path="products" element={<ProductsPage />} /> 
@@ -47,9 +50,11 @@ function App() {
           <Route path="profile" element={<ProfilePage />} />
           <Route path="contact" element={<ContactPage />} />
           <Route path="payment-result" element={<PaymentResult />} /> 
+          <Route path="articles" element={<ArticlesPage />} /> 
+          <Route path="article/:id" element={<ArticleDetailPage />} /> 
         </Route>
         
-        {/* ================= GIAO DIỆN QUẢN TRỊ (ĐÃ KHÓA CHẶT) ================= */}
+        {/* ADMIN ROUTES */}
         <Route element={<ProtectedRoute />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} /> 
@@ -62,12 +67,11 @@ function App() {
             <Route path="reviews" element={<ReviewManager />} /> 
             <Route path="payments" element={<PaymentManager />} /> 
             <Route path="contacts" element={<ContactManager />} />
-            
-            {/* 👇 KẾT NỐI ROUTE CHO CAMERA HỆ THỐNG */}
+            <Route path="articles" element={<ArticleManager />} />
             <Route path="activity-logs" element={<ActivityLogManager />} />
+            <Route path="banners" element={<BannerManager />} /> {/* 👈 GẮN ROUTE BANNER */}
           </Route>
         </Route>
-
       </Routes>
     </BrowserRouter>
   );

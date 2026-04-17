@@ -48,6 +48,7 @@ const ProductManager = () => {
     let tempErrors = {};
     if (!newProduct.productName?.trim()) tempErrors.productName = "Tên món không được để trống!";
     if (!sizes.M.price || isNaN(parseFloat(sizes.M.price))) tempErrors.priceM = "Giá món phải là số!";
+    // Khi thêm mới thì bắt buộc có ảnh, khi sửa thì không bắt buộc (dùng lại ảnh cũ)
     if (!editingId && !imageFile) tempErrors.image = "Chưa có ảnh món sếp ơi!";
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
@@ -61,9 +62,9 @@ const ProductManager = () => {
         hasOptions: product.hasOptions, isActive: !product.isActive 
       };
       await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${product.id}`, updated, { headers });
-      showSystemNotify(`Đã cập nhật món ${product.productName}!`);
+      showSystemNotify(`Đã cập nhật trạng thái món!`);
       fetchProducts();
-    } catch { showSystemNotify("Lỗi cập nhật trạng thái!", "error"); }
+    } catch { showSystemNotify("Lỗi cập nhật!", "error"); }
   };
 
   const handleDelete = async (id) => {
@@ -88,54 +89,55 @@ const ProductManager = () => {
       L: { active: product.sizeUpPrice > 0, price: product.sizeUpPrice > 0 ? (product.basePrice + product.sizeUpPrice) : '' },
       XL: { active: product.sizeXlPrice > 0, price: product.sizeXlPrice > 0 ? (product.basePrice + product.sizeXlPrice) : '' }
     });
-    setImageFile(null);
+    setImageFile(null); // Reset file input
     setIsModalOpen(true);
   };
 
   const handleSave = async () => {
     if (!validateForm()) return;
 
-    // 💡 FIX LỖI 400: ÉP KIỂU SỐ CỰC KỲ CẨN THẬN
     const mPrice = parseFloat(sizes.M.price) || 0;
     const lPrice = parseFloat(sizes.L.price) || 0;
     const xlPrice = parseFloat(sizes.XL.price) || 0;
     const upPrice = sizes.L.active ? (lPrice - mPrice) : 0;
     const xlUpPrice = sizes.XL.active ? (xlPrice - mPrice) : 0;
 
+    // 💡 GIẢI PHÁP: Dùng FormData cho cả POST và PUT để gửi được ảnh
+    const formData = new FormData();
+    formData.append('ProductName', newProduct.productName);
+    formData.append('CategoryId', parseInt(newProduct.categoryId));
+    formData.append('Description', newProduct.description);
+    formData.append('IsActive', newProduct.isActive);
+    formData.append('BasePrice', mPrice);
+    formData.append('SizeUpPrice', upPrice);
+    formData.append('SizeXlPrice', xlUpPrice); 
+    formData.append('HasOptions', (sizes.L.active || sizes.XL.active)); 
+    
+    // Nếu sếp chọn file mới thì mới append vào
+    if (imageFile) {
+      formData.append('ImageFile', imageFile);
+    }
+
     try {
       if (editingId) {
-        // GỬI JSON (PUT)
-        const updateData = {
-          id: parseInt(editingId),
-          productName: newProduct.productName,
-          categoryId: parseInt(newProduct.categoryId),
-          description: newProduct.description,
-          isActive: newProduct.isActive,
-          basePrice: mPrice,
-          sizeUpPrice: upPrice,
-          sizeXlPrice: xlUpPrice,
-          hasOptions: (sizes.L.active || sizes.XL.active)
-        };
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${editingId}`, updateData, { headers });
+        // CẬP NHẬT (PUT) - Phải append ID vào Form để Backend nhận diện
+        formData.append('Id', parseInt(editingId));
+        await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${editingId}`, formData, { 
+            headers: { ...headers, 'Content-Type': 'multipart/form-data' } 
+        });
         showSystemNotify("Cập nhật thành công! ✨");
       } else {
-        // GỬI FORMDATA (POST)
-        const formData = new FormData();
-        formData.append('ProductName', newProduct.productName);
-        formData.append('CategoryId', parseInt(newProduct.categoryId));
-        formData.append('Description', newProduct.description);
-        formData.append('IsActive', newProduct.isActive);
-        formData.append('BasePrice', mPrice);
-        formData.append('SizeUpPrice', upPrice);
-        formData.append('SizeXlPrice', xlUpPrice); 
-        formData.append('HasOptions', (sizes.L.active || sizes.XL.active)); 
-        formData.append('ImageFile', imageFile);
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/Products`, formData, { headers });
+        // THÊM MỚI (POST)
+        await axios.post(`${import.meta.env.VITE_API_URL}/api/Products`, formData, { 
+            headers: { ...headers, 'Content-Type': 'multipart/form-data' } 
+        });
         showSystemNotify("Đã thêm món mới! 🎉");
       }
       setIsModalOpen(false);
       fetchProducts();
-    } catch { showSystemNotify("Lỗi 400: Kiểm tra lại dữ liệu!", "error"); }
+    } catch { 
+      showSystemNotify("Lỗi 400: Sếp check lại Backend nhé!", "error"); 
+    }
   };
 
   return (
@@ -147,16 +149,16 @@ const ProductManager = () => {
         </div>
       )}
 
-      {/* HEADER CỦA SẾP */}
+      {/* HEADER */}
       <div className="flex justify-between items-center bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100">
         <div>
           <h1 className="text-3xl font-black text-gray-800 tracking-tight italic uppercase">Kho <span className="text-blue-600">HieuStore</span></h1>
-          <p className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-widest italic">Hệ thống quản lý Menu</p>
+          <p className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-widest italic">Quản lý Menu & Hình ảnh</p>
         </div>
         <button onClick={() => { setEditingId(null); setErrors({}); setNewProduct({ productName: '', categoryId: 1, description: '', isActive: true }); setSizes({ M: { active: true, price: '' }, L: { active: false, price: '' }, XL: { active: false, price: '' } }); setImageFile(null); setIsModalOpen(true); }} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black shadow-xl hover:bg-blue-700 transition-all active:scale-95 text-xs tracking-widest">+ THÊM MÓN</button>
       </div>
 
-      {/* BẢNG DANH SÁCH (GIỮ NGUYÊN) */}
+      {/* BẢNG DANH SÁCH */}
       <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-gray-100">
         <table className="w-full text-left">
           <thead className="bg-gray-50 border-b border-gray-100 font-black text-xs text-gray-400 uppercase tracking-widest">
@@ -169,7 +171,10 @@ const ProductManager = () => {
                 <td className="p-8">
                   <div className="flex items-center gap-6">
                     <img src={`${import.meta.env.VITE_API_URL}${item.imageUrl}`} className={`w-16 h-16 rounded-2xl object-cover shadow-sm ${!item.isActive ? 'grayscale opacity-40' : ''}`} onError={(e)=>e.target.src='https://placehold.co/100'} alt="mon" />
-                    <div><div className={`font-black text-lg ${item.isActive ? 'text-gray-800' : 'text-gray-400'}`}>{item.productName}</div><div className="text-[10px] text-blue-600 font-black uppercase mt-1">M: {item.basePrice?.toLocaleString()}đ</div></div>
+                    <div>
+                        <div className={`font-black text-lg ${item.isActive ? 'text-gray-800' : 'text-gray-400'}`}>{item.productName}</div>
+                        <div className="text-[10px] text-blue-600 font-black uppercase mt-1">M: {item.basePrice?.toLocaleString()}đ</div>
+                    </div>
                   </div>
                 </td>
                 <td className="p-8 text-center">
@@ -178,9 +183,9 @@ const ProductManager = () => {
                   </button>
                 </td>
                 <td className="p-8 text-right space-x-3">
-                  <button onClick={() => { setSelectedProduct(item); setIsDetailOpen(true); }} className="text-gray-400 font-black uppercase text-[9px] hover:text-blue-600">Chi tiết</button>
-                  <button onClick={() => openEditModal(item)} className="text-blue-600 font-black underline uppercase text-[9px]">Sửa</button>
-                  <button onClick={() => handleDelete(item.id)} className="text-rose-500 font-black uppercase text-[9px]">Xóa</button>
+                  <button onClick={() => { setSelectedProduct(item); setIsDetailOpen(true); }} className="text-gray-400 font-black uppercase text-[9px] hover:text-blue-600 transition-colors">Chi tiết</button>
+                  <button onClick={() => openEditModal(item)} className="text-blue-600 font-black underline uppercase text-[9px] hover:text-blue-800">Sửa</button>
+                  <button onClick={() => handleDelete(item.id)} className="text-rose-500 font-black uppercase text-[9px] hover:text-rose-700">Xóa</button>
                 </td>
               </tr>
             ))}
@@ -188,7 +193,7 @@ const ProductManager = () => {
         </table>
       </div>
 
-      {/* --- MODAL XEM CHI TIẾT (GIỮ NGUYÊN) --- */}
+      {/* --- MODAL XEM CHI TIẾT --- */}
       {isDetailOpen && selectedProduct && (
         <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-[3rem] p-10 w-full max-w-lg shadow-2xl relative animate-fadeIn border border-gray-100">
@@ -205,21 +210,29 @@ const ProductManager = () => {
         </div>
       )}
 
-      {/* --- MODAL THÊM / SỬA (GIỮ NGUYÊN) --- */}
+      {/* --- MODAL THÊM / SỬA (FIXED CHỖ CHỌN ẢNH) --- */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-[3rem] p-12 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto border-4 border-blue-50">
-            <h2 className="text-3xl font-black mb-10 uppercase italic text-blue-600 tracking-tighter underline decoration-4 underline-offset-8 decoration-blue-200">{editingId ? "Cập Nhật Sản Phẩm" : "Thêm Món Mới"}</h2>
+            <h2 className="text-3xl font-black mb-10 uppercase italic text-blue-600 tracking-tighter underline decoration-4 underline-offset-8 decoration-blue-200">
+                {editingId ? "Cập Nhật Món" : "Thêm Món Mới"}
+            </h2>
             <div className="grid grid-cols-2 gap-8">
                 <div className="col-span-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Tên Sản Phẩm</label>
                   <input type="text" value={newProduct.productName} onChange={e => {setNewProduct({...newProduct, productName: e.target.value}); if (errors.productName) setErrors({...errors, productName: null});}} className={`w-full p-5 bg-gray-50 rounded-[1.5rem] font-black outline-none border-2 transition-all text-lg ${errors.productName ? 'border-rose-500 bg-rose-50' : 'border-transparent focus:border-blue-500'}`} />
                   {errors.productName && <p className="text-[10px] text-rose-500 font-black mt-2 ml-4 uppercase italic">⚠ {errors.productName}</p>}
                 </div>
+                
                 <div className="col-span-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Danh Mục</label>
-                  <select value={newProduct.categoryId} onChange={e => setNewProduct({...newProduct, categoryId: e.target.value})} className="w-full p-5 bg-gray-50 rounded-[1.5rem] font-black outline-none border-2 border-transparent focus:border-blue-500"><option value={1}>1 - Trà Sữa</option><option value={2}>2 - Cà Phê</option><option value={3}>3 - Ăn Vặt</option></select>
+                  <select value={newProduct.categoryId} onChange={e => setNewProduct({...newProduct, categoryId: e.target.value})} className="w-full p-5 bg-gray-50 rounded-[1.5rem] font-black outline-none border-2 border-transparent focus:border-blue-500">
+                    <option value={1}>1 - Trà Sữa</option>
+                    <option value={2}>2 - Cà Phê</option>
+                    <option value={3}>3 - Ăn Vặt</option>
+                  </select>
                 </div>
+
                 <div className="col-span-1">
                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Hiển Thị</label>
                    <div className="flex items-center gap-4 bg-gray-50 p-5 rounded-[1.5rem] h-[68px] border-2 border-transparent">
@@ -227,6 +240,8 @@ const ProductManager = () => {
                      <input type="checkbox" checked={newProduct.isActive} onChange={e => setNewProduct({...newProduct, isActive: e.target.checked})} className="w-6 h-6 accent-blue-600 cursor-pointer" />
                    </div>
                 </div>
+
+                {/* PHẦN GIÁ SIZE (GIỮ NGUYÊN) */}
                 <div className="col-span-2 space-y-4">
                    <label className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] ml-4 block">Giá Bán Theo Size (VNĐ)</label>
                    <div className="bg-gray-50 p-6 rounded-[2.5rem] space-y-4">
@@ -246,18 +261,32 @@ const ProductManager = () => {
                       </div>
                    </div>
                 </div>
+
                 <div className="col-span-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Mô tả</label>
-                  <textarea value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} className="w-full p-5 bg-gray-50 rounded-[1.5rem] font-black outline-none h-24 border-2 border-transparent focus:border-blue-500 italic text-sm transition-all" placeholder="Mô tả món ăn..."></textarea>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Mô tả món ăn</label>
+                  <textarea value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} className="w-full p-5 bg-gray-50 rounded-[1.5rem] font-black outline-none h-24 border-2 border-transparent focus:border-blue-500 italic text-sm transition-all" placeholder="Nhập mô tả hấp dẫn..."></textarea>
                 </div>
-                {!editingId && (
-                  <div className="col-span-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Ảnh</label>
-                    <input type="file" accept="image/*" onChange={e => {setImageFile(e.target.files[0]); if (errors.image) setErrors({...errors, image: null});}} className={`w-full p-4 bg-gray-50 rounded-[1.5rem] font-black text-xs border-2 ${errors.image ? 'border-rose-500 bg-rose-50' : 'border-transparent'}`} />
+
+                {/* 👇 CHỖ NÀY QUAN TRỌNG: Hiện nút chọn ảnh cho cả Thêm và Sửa */}
+                <div className="col-span-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">
+                        {editingId ? "Thay đổi ảnh món (Bỏ trống nếu giữ nguyên)" : "Hình ảnh sản phẩm *"}
+                    </label>
+                    <div className="flex items-center gap-4">
+                        <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={e => {setImageFile(e.target.files[0]); if (errors.image) setErrors({...errors, image: null});}} 
+                            className={`flex-1 p-4 bg-gray-50 rounded-[1.5rem] font-black text-xs border-2 ${errors.image ? 'border-rose-500 bg-rose-50' : 'border-transparent'}`} 
+                        />
+                        {editingId && !imageFile && (
+                            <span className="text-[9px] font-black text-blue-500 uppercase italic">Đang dùng ảnh cũ</span>
+                        )}
+                    </div>
                     {errors.image && <p className="text-[10px] text-rose-500 font-black mt-2 ml-4 uppercase italic">⚠ {errors.image}</p>}
-                  </div>
-                )}
+                </div>
             </div>
+
             <div className="flex gap-6 mt-12">
                 <button onClick={() => setIsModalOpen(false)} className="flex-1 py-6 bg-gray-100 rounded-[2rem] font-black text-gray-400 uppercase tracking-[0.2em] hover:bg-gray-200 transition-all text-xs">Đóng lại</button>
                 <button onClick={handleSave} className="flex-[2] py-6 bg-blue-600 text-white rounded-[2rem] font-black shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95 uppercase tracking-[0.2em] text-xs">Lưu Dữ Liệu 🚀</button>

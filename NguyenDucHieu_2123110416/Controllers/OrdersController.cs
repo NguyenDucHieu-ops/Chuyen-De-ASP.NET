@@ -24,7 +24,7 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         // ====================================================
-        // 1. ADMIN: LẤY TOÀN BỘ ĐƠN HÀNG (GIỮ NGUYÊN)
+        // 1. ADMIN: LẤY TOÀN BỘ ĐƠN HÀNG 
         // ====================================================
         [HttpGet]
         [Authorize(Roles = "Admin")]
@@ -51,7 +51,7 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         // ====================================================
-        // 2. ADMIN: XEM CHI TIẾT ĐƠN HÀNG (GIỮ NGUYÊN)
+        // 2. ADMIN: XEM CHI TIẾT ĐƠN HÀNG 
         // ====================================================
         [HttpGet("{id}")]
         [Authorize(Roles = "Admin")]
@@ -91,7 +91,7 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         // ====================================================
-        // 3. ADMIN: CẬP NHẬT TRẠNG THÁI (GIỮ NGUYÊN)
+        // 3. ADMIN: CẬP NHẬT TRẠNG THÁI 
         // ====================================================
         [HttpPut("{id}/status")]
         [Authorize(Roles = "Admin")]
@@ -118,7 +118,7 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         // ====================================================
-        // 4. DÀNH CHO KHÁCH HÀNG: ĐẶT HÀNG (FIXED: ĐÃ THÊM LOGIC LƯU)
+        // 4. DÀNH CHO KHÁCH HÀNG: ĐẶT HÀNG 
         // ====================================================
         [HttpPost("checkout")]
         public async Task<IActionResult> Checkout([FromBody] OrderRequestDTO request)
@@ -148,7 +148,7 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         // ====================================================
-        // 5. DÀNH CHO KHÁCH HÀNG: XEM LỊCH SỬ (FIXED: ĐÃ THÊM LOGIC LẤY DỮ LIỆU)
+        // 5. DÀNH CHO KHÁCH HÀNG: XEM LỊCH SỬ 
         // ====================================================
         [HttpGet("history")]
         public async Task<IActionResult> GetOrderHistory()

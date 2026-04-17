@@ -34,7 +34,6 @@ namespace NguyenDucHieu_2123110416.Controllers
 
             if (orderDetail == null) return NotFound();
 
-            // Bảo mật: Chỉ chủ đơn hoặc Admin mới được xem
             if (orderDetail.Order.UserId != userId && userRole != "Admin") return Forbid();
 
             return orderDetail;
@@ -46,7 +45,6 @@ namespace NguyenDucHieu_2123110416.Controllers
         {
             _context.OrderDetails.Add(orderDetail);
             await _context.SaveChangesAsync();
-            // Đã thêm return để vá lỗi CS0161 cho sếp
             return CreatedAtAction("GetOrderDetail", new { id = orderDetail.Id }, orderDetail);
         }
 

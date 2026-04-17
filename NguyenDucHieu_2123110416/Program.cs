@@ -12,7 +12,6 @@ var builder = WebApplication.CreateBuilder(args);
 // ====================================================================
 // 1. ĐĂNG KÝ CƠ SỞ DỮ LIỆU & SERVICES
 // ====================================================================
-// 👇 Dòng này cực kỳ quan trọng để bắt Log: Cung cấp thông tin User đang đăng nhập cho DbContext
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -22,7 +21,22 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 // ====================================================================
-// 2. CẤU HÌNH BẢO MẬT JWT TOKEN
+// 2. MỞ CỬA CORS CHO FRONTEND (Đặt trước builder.Build)
+// ====================================================================
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowHieuStore",
+        policy =>
+        {
+            // Cho phép mọi nguồn, mọi phương thức, mọi Header để làm đồ án cho sướng
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        });
+});
+
+// ====================================================================
+// 3. CẤU HÌNH BẢO MẬT JWT TOKEN
 // ====================================================================
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["Key"] ?? throw new Exception("Thiếu Key JWT!");
@@ -45,21 +59,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ====================================================================
-// 3. CẤU HÌNH CONTROLLERS & JSON
-// ====================================================================
 builder.Services.AddControllers().AddJsonOptions(x =>
     x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
 
 builder.Services.AddEndpointsApiExplorer();
 
 // ====================================================================
-// 4. CẤU HÌNH SWAGGER (BẬT NÚT AUTHORIZE)
+// 4. CẤU HÌNH SWAGGER
 // ====================================================================
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Hieu Store API", Version = "v1" });
-
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "Nhập Token theo cú pháp: Bearer {Token_Của_Bạn}",
@@ -68,7 +78,6 @@ builder.Services.AddSwaggerGen(c =>
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
-
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -81,25 +90,12 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ====================================================================
-// 5. MỞ CỬA CORS CHO FRONTEND
-// ====================================================================
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll",
-        policy =>
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyMethod()
-                  .AllowAnyHeader();
-        });
-});
-
 var app = builder.Build();
 
 // ====================================================================
-// 6. CẤU HÌNH MIDDLEWARE
+// 5. CẤU HÌNH MIDDLEWARE (THỨ TỰ CỰC KỲ QUAN TRỌNG)
 // ====================================================================
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -110,7 +106,8 @@ app.UseSwaggerUI(c =>
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-app.UseCors("AllowAll");
+// 💡 DÙNG MỘT LẦN DUY NHẤT VÀ ĐẶT TRƯỚC AUTHENTICATION
+app.UseCors("AllowHieuStore");
 
 app.UseAuthentication();
 app.UseAuthorization();

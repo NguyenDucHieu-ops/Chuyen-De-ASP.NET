@@ -2,13 +2,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NguyenDucHieu_2123110416.Data;
-using NguyenDucHieu_2123110416.DTOs;
 using NguyenDucHieu_2123110416.Models;
 using System.Security.Claims;
 
 namespace NguyenDucHieu_2123110416.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/banners")] // 💡 Ép đường dẫn cố định là /api/banners
     [ApiController]
     [Authorize]
     public class BannersController : ControllerBase
@@ -23,70 +22,86 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous] // Khách xem trang chủ thấy banner
-        public async Task<ActionResult<IEnumerable<Banner>>> GetBanners()
-        {
-            return await _context.Banners
-                .Where(b => b.IsDeleted == false && b.IsActive == true)
-                .ToListAsync();
-        }
+        [AllowAnonymous]
+        public async Task<IActionResult> GetBanners() =>
+            Ok(await _context.Banners.Where(b => !b.IsDeleted).OrderByDescending(b => b.CreatedAt).ToListAsync());
 
         [HttpPost]
-        public async Task<IActionResult> PostBanner([FromForm] BannerCreateDTO request)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Create([FromForm] BannerRequest request)
         {
             try
             {
-                var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-                // 1. Xử lý Upload Ảnh
-                var file = request.ImageFile;
-                if (file == null || file.Length == 0) return BadRequest("Vui lòng chọn ảnh!");
-
-                string rootPath = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-                string folderPath = Path.Combine(rootPath, "images", "banners");
-                if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
-
-                string uniqueFileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-                string filePath = Path.Combine(folderPath, uniqueFileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await file.CopyToAsync(stream);
-                }
-
-                // 2. Lưu Database
+                if (request.Image == null) return BadRequest("Chưa có ảnh!");
+                string fileName = await SaveImage(request.Image);
                 var banner = new Banner
                 {
                     Title = request.Title,
-                    LinkUrl = request.LinkUrl,
-                    IsActive = request.IsActive,
-                    ImageUrl = $"/images/banners/{uniqueFileName}",
-                    CreatedBy = adminId,
-                    CreatedAt = DateTime.Now
+                    LinkUrl = request.LinkUrl ?? "#",
+                    ImageUrl = "/images/banners/" + fileName,
+                    IsActive = true,
+                    CreatedAt = DateTime.Now,
+                    CreatedBy = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!)
                 };
-
                 _context.Banners.Add(banner);
                 await _context.SaveChangesAsync();
-                return Ok(banner);
+                return Ok(new { message = "Thêm thành công!" });
+            }
+            catch (Exception ex) { return BadRequest(ex.Message); }
+        }
+
+        // 💡 ĐƯỜNG DẪN CỨNG: api/banners/update/{id}
+        [HttpPost("update/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateBanner(int id, [FromForm] BannerRequest request)
+        {
+            try
+            {
+                var banner = await _context.Banners.FindAsync(id);
+                if (banner == null) return NotFound(new { message = "Không tìm thấy banner ID: " + id });
+
+                banner.Title = request.Title;
+                banner.LinkUrl = request.LinkUrl ?? "#";
+                banner.UpdatedAt = DateTime.Now;
+                banner.UpdatedBy = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                if (request.Image != null && request.Image.Length > 0)
+                {
+                    banner.ImageUrl = "/images/banners/" + await SaveImage(request.Image);
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Cập nhật thành công!" });
             }
             catch (Exception ex) { return BadRequest(ex.Message); }
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteBanner(int id)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Delete(int id)
         {
             var banner = await _context.Banners.FindAsync(id);
-            if (banner == null || banner.IsDeleted) return NotFound();
-
-            var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
+            if (banner == null) return NotFound();
             banner.IsDeleted = true;
-            banner.DeletedAt = DateTime.Now;
-            banner.DeletedBy = adminId;
-            banner.IsActive = false;
-
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Đã xóa banner thành công!" });
+            return Ok();
         }
+
+        private async Task<string> SaveImage(IFormFile file)
+        {
+            string folderPath = Path.Combine(_env.WebRootPath, "images", "banners");
+            if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
+            string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+            string path = Path.Combine(folderPath, fileName);
+            using (var stream = new FileStream(path, FileMode.Create)) { await file.CopyToAsync(stream); }
+            return fileName;
+        }
+    }
+
+    public class BannerRequest
+    {
+        public string Title { get; set; } = null!;
+        public string? LinkUrl { get; set; }
+        public IFormFile? Image { get; set; }
     }
 }
