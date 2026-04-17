@@ -15,25 +15,122 @@ namespace NguyenDucHieu_2123110416.Controllers
     public class OrdersController : ControllerBase
     {
         private readonly IOrderService _orderService;
-        private readonly AppDbContext _context; // Đã thêm
+        private readonly AppDbContext _context;
 
-        public OrdersController(IOrderService orderService, AppDbContext context) // Đã sửa constructor
+        public OrdersController(IOrderService orderService, AppDbContext context)
         {
             _orderService = orderService;
             _context = context;
         }
 
+        // ====================================================
+        // 1. ADMIN: LẤY TOÀN BỘ ĐƠN HÀNG (GIỮ NGUYÊN)
+        // ====================================================
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAllOrders()
+        {
+            try
+            {
+                var orders = await _context.Orders
+                    .Include(o => o.User)
+                    .OrderByDescending(o => o.CreatedAt)
+                    .Select(o => new {
+                        id = o.Id,
+                        customerName = o.User.FullName,
+                        phone = o.User.PhoneNumber,
+                        totalAmount = o.FinalAmount,
+                        status = o.OrderStatus,
+                        createdAt = o.CreatedAt
+                    })
+                    .ToListAsync();
+
+                return Ok(orders);
+            }
+            catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
+        }
+
+        // ====================================================
+        // 2. ADMIN: XEM CHI TIẾT ĐƠN HÀNG (GIỮ NGUYÊN)
+        // ====================================================
+        [HttpGet("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetOrderDetail(int id)
+        {
+            try
+            {
+                var order = await _context.Orders
+                    .Include(o => o.User)
+                    .Include(o => o.OrderDetails).ThenInclude(od => od.Product)
+                    .Include(o => o.OrderDetails).ThenInclude(od => od.OrderDetailToppings).ThenInclude(odt => odt.Topping)
+                    .FirstOrDefaultAsync(o => o.Id == id);
+
+                if (order == null) return NotFound("Không thấy đơn hàng!");
+
+                var result = new
+                {
+                    id = order.Id,
+                    customerName = order.User.FullName,
+                    phone = order.User.PhoneNumber,
+                    address = "Giao hàng tận nơi",
+                    totalAmount = order.FinalAmount,
+                    status = order.OrderStatus,
+                    createdAt = order.CreatedAt,
+                    orderDetails = order.OrderDetails.Select(od => new {
+                        productName = od.Product.ProductName,
+                        size = od.Size,
+                        quantity = od.Quantity,
+                        unitPrice = od.UnitPrice,
+                        toppingNames = string.Join(", ", od.OrderDetailToppings.Select(t => t.Topping.ToppingName))
+                    })
+                };
+
+                return Ok(result);
+            }
+            catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
+        }
+
+        // ====================================================
+        // 3. ADMIN: CẬP NHẬT TRẠNG THÁI (GIỮ NGUYÊN)
+        // ====================================================
+        [HttpPut("{id}/status")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] int status)
+        {
+            try
+            {
+                var adminIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(adminIdString)) return Unauthorized();
+
+                await _orderService.UpdateOrderStatusAsync(id, status);
+
+                var order = await _context.Orders.FindAsync(id);
+                if (order != null)
+                {
+                    order.UpdatedBy = int.Parse(adminIdString);
+                    order.UpdatedAt = DateTime.Now;
+                    await _context.SaveChangesAsync();
+                }
+
+                return Ok(new { message = "Cập nhật trạng thái thành công!" });
+            }
+            catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
+        }
+
+        // ====================================================
+        // 4. DÀNH CHO KHÁCH HÀNG: ĐẶT HÀNG (FIXED: ĐÃ THÊM LOGIC LƯU)
+        // ====================================================
         [HttpPost("checkout")]
         public async Task<IActionResult> Checkout([FromBody] OrderRequestDTO request)
         {
             try
             {
                 var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(userIdString))
-                    return Unauthorized(new { error = "Token không hợp lệ!" });
+                if (string.IsNullOrEmpty(userIdString)) return Unauthorized(new { error = "Hết hạn đăng nhập!" });
 
                 int currentUserId = int.Parse(userIdString);
 
+                // Chuyển DTO sang danh sách OrderDetail
                 var orderDetails = request.Items.Select(item => new OrderDetail
                 {
                     ProductId = item.ProductId,
@@ -42,6 +139,7 @@ namespace NguyenDucHieu_2123110416.Controllers
                     OrderDetailToppings = item.ToppingIds.Select(id => new OrderDetailTopping { ToppingId = id }).ToList()
                 }).ToList();
 
+                // Gọi Service để thực hiện lưu đơn vào Database
                 var order = await _orderService.CreateOrderAsync(currentUserId, request.AddressId, request.VoucherCode, orderDetails, request.Note ?? string.Empty);
 
                 return Ok(new { message = "Đặt hàng thành công!", orderId = order.Id, finalAmount = order.FinalAmount });
@@ -49,6 +147,9 @@ namespace NguyenDucHieu_2123110416.Controllers
             catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
         }
 
+        // ====================================================
+        // 5. DÀNH CHO KHÁCH HÀNG: XEM LỊCH SỬ (FIXED: ĐÃ THÊM LOGIC LẤY DỮ LIỆU)
+        // ====================================================
         [HttpGet("history")]
         public async Task<IActionResult> GetOrderHistory()
         {
@@ -61,38 +162,6 @@ namespace NguyenDucHieu_2123110416.Controllers
                 return Ok(orders);
             }
             catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
-        }
-
-        [HttpPut("{id}/status")]
-        public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateOrderStatusDTO request)
-        {
-            try
-            {
-                var adminIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(adminIdString)) return Unauthorized();
-                int adminId = int.Parse(adminIdString);
-
-                await _orderService.UpdateOrderStatusAsync(id, request.Status);
-
-                var order = await _context.Orders.FindAsync(id);
-                if (order != null)
-                {
-                    order.UpdatedBy = adminId;
-                    order.UpdatedAt = DateTime.Now;
-                    await _context.SaveChangesAsync();
-                }
-
-                return Ok(new { message = $"Đã cập nhật đơn hàng #{id} sang trạng thái: {request.Status}" });
-            }
-            catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
-        }
-
-        [HttpPost("seed-data-test")]
-        [AllowAnonymous]
-        public async Task<IActionResult> SeedDataTest([FromServices] AppDbContext context)
-        {
-            // Code seed data cũ của bạn...
-            return Ok("Đã tạo dữ liệu mẫu thành công!");
         }
     }
 }

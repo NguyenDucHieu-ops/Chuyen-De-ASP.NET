@@ -6,6 +6,7 @@ namespace NguyenDucHieu_2123110416.Services
     {
         Task<Order> CreateOrderAsync(int userId, int addressId, string? voucherCode, List<OrderDetail> cartItems, string note);
         Task<List<Order>> GetUserOrdersAsync(int userId);
-        Task UpdateOrderStatusAsync(int orderId, string status); // Bỏ chữ <bool> đi cho đồng bộ
+        // Dùng int cho status để khớp với Controller và React
+        Task UpdateOrderStatusAsync(int orderId, int status);
     }
 }
