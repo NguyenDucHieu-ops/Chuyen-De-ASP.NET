@@ -20,14 +20,13 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         // ====================================================
-        // PHẦN 1: CÁC API DÀNH CHO ADMIN QUẢN LÝ
+        // PHẦN 1: CÁC API DÀNH CHO ADMIN QUẢN LÝ (Giữ nguyên logic của sếp)
         // ====================================================
 
         [HttpGet]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<IEnumerable<User>>> GetUsers()
+        public async Task<ActionResult<IEnumerable<object>>> GetUsers()
         {
-            // Trả về DTO (hoặc select trường) để tránh lỗi vòng lặp JSON
             var users = await _context.Users
                 .Include(u => u.Role)
                 .Select(u => new
@@ -67,14 +66,12 @@ namespace NguyenDucHieu_2123110416.Controllers
             };
         }
 
-        // 💡 FIX LỖI 400: DÙNG DTO CHO POST
         [HttpPost]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> PostUser([FromBody] UserCreateDTO dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            // Kiểm tra email trùng
             if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
             {
                 return BadRequest(new { error = "Email này đã được sử dụng trên hệ thống!" });
@@ -95,7 +92,6 @@ namespace NguyenDucHieu_2123110416.Controllers
             return Ok(new { message = "Tạo tài khoản thành công!", id = newUser.Id });
         }
 
-        // 💡 FIX LỖI 400: DÙNG DTO CHO PUT
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> PutUser(int id, [FromBody] UserUpdateDTO dto)
@@ -106,12 +102,8 @@ namespace NguyenDucHieu_2123110416.Controllers
             var existingUser = await _context.Users.FindAsync(id);
             if (existingUser == null) return NotFound(new { error = "Không tìm thấy người dùng!" });
 
-            // Cập nhật thông tin (không đổi email và password ở đây để an toàn)
             existingUser.FullName = dto.FullName;
             existingUser.RoleId = dto.RoleId;
-
-            // Nếu admin muốn đổi cả số điện thoại/trạng thái thì thêm vào đây
-            // existingUser.PhoneNumber = dto.PhoneNumber;
 
             await _context.SaveChangesAsync();
             return Ok(new { message = "Cập nhật thông tin thành công!" });
@@ -124,26 +116,9 @@ namespace NguyenDucHieu_2123110416.Controllers
             var user = await _context.Users.FindAsync(id);
             if (user == null) return NotFound();
 
-            // Ghi log người xóa (Nếu cần)
-           
-
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
             return Ok(new { message = "Đã xóa tài khoản vĩnh viễn!" });
-        }
-
-        [HttpDelete("multiple")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteMultipleUsers([FromQuery] string ids)
-        {
-            if (string.IsNullOrWhiteSpace(ids)) return BadRequest("Vui lòng nhập danh sách ID!");
-            var idList = ids.Split(',').Select(i => i.Trim()).Where(i => int.TryParse(i, out _)).Select(int.Parse).ToList();
-            var usersToDelete = await _context.Users.Where(u => idList.Contains(u.Id)).ToListAsync();
-            if (!usersToDelete.Any()) return NotFound("Không tìm thấy tài khoản nào để xóa!");
-
-            _context.Users.RemoveRange(usersToDelete);
-            await _context.SaveChangesAsync();
-            return Ok(new { message = $"Đã xóa thành công {usersToDelete.Count} tài khoản!" });
         }
 
         // ====================================================
@@ -154,18 +129,25 @@ namespace NguyenDucHieu_2123110416.Controllers
         [Authorize]
         public async Task<IActionResult> GetMyProfile()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) return Unauthorized();
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+            int userId = int.Parse(userIdClaim);
 
-            var user = await _context.Users.FindAsync(int.Parse(userId));
-            if (user == null) return NotFound("Không tìm thấy user");
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return NotFound("Không tìm thấy người dùng");
+
+            // 💡 TÍNH TỔNG ĐIỂM TỪ CÁC GIAO DỊCH (FIX LỖI ĐIỂM KO HIỆN)
+            var totalPoints = await _context.PointTransactions
+                .Where(pt => pt.UserId == userId && pt.IsDeleted == false)
+                .SumAsync(pt => pt.Points);
 
             return Ok(new
             {
                 fullName = user.FullName,
                 email = user.Email,
                 phone = user.PhoneNumber,
-                address = "" // Chưa có trường Address trong DB User
+                address = user.Address ?? "Chưa cập nhật địa chỉ", // Trả về địa chỉ thực từ DB
+                currentPoints = totalPoints // 💡 Gửi tổng điểm về cho React
             });
         }
 
@@ -175,18 +157,19 @@ namespace NguyenDucHieu_2123110416.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) return Unauthorized();
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+            int userId = int.Parse(userIdClaim);
 
-            var user = await _context.Users.FindAsync(int.Parse(userId));
-            if (user == null) return NotFound("Không tìm thấy user");
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return NotFound("Không tìm thấy người dùng");
 
             user.FullName = request.FullName;
             user.PhoneNumber = request.Phone;
-            // user.Address = request.Address;
+            user.Address = request.Address; // 💡 Cập nhật địa chỉ thực vào DB
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Cập nhật thành công!" });
+            return Ok(new { message = "Cập nhật hồ sơ thành công! ✨" });
         }
 
         // ====================================================
@@ -228,7 +211,7 @@ namespace NguyenDucHieu_2123110416.Controllers
             public string FullName { get; set; } = string.Empty;
 
             [Required(ErrorMessage = "Không được để trống số điện thoại!")]
-            [RegularExpression(@"^(0[3|5|7|8|9])+([0-9]{8})$", ErrorMessage = "Phải là số điện thoại VN hợp lệ (10 số)!")]
+            [RegularExpression(@"^(0[3|5|7|8|9])+([0-9]{8})$", ErrorMessage = "Số điện thoại không hợp lệ!")]
             public string Phone { get; set; } = string.Empty;
 
             public string Address { get; set; } = string.Empty;

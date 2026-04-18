@@ -111,7 +111,7 @@ const UserManager = () => {
       {/* HEADER & TOOLBAR */}
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col lg:flex-row justify-between items-center gap-6">
         <div>
-          <h1 className="text-3xl font-black text-gray-800 uppercase italic leading-none">Nhân Sự <span className="text-blue-600">HieuStore</span></h1>
+          <h1 className="text-3xl font-black text-gray-800 uppercase italic leading-none">Người dùng <span className="text-blue-600">HieuStore</span></h1>
           <p className="text-[10px] text-gray-400 font-bold mt-2 uppercase tracking-[0.2em]">Hệ thống quản trị tài khoản tập trung</p>
         </div>
         

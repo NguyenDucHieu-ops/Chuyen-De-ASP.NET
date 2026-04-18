@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import PaginatedList from '../../../components/PaginatedList'; // 💡 ĐÃ IMPORT
+import PaginatedList from '../../../components/PaginatedList';
 
 const ProductManager = () => {
   const [products, setProducts] = useState([]);
@@ -11,6 +11,7 @@ const ProductManager = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [errors, setErrors] = useState({});
+  const fileInputRef = useRef(null); 
 
   const [notify, setNotify] = useState({ show: false, message: '', type: 'success' });
   const showSystemNotify = (msg, type = 'success') => {
@@ -36,11 +37,36 @@ const ProductManager = () => {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/Products`);
       setProducts(res.data);
-    } catch { console.error("Lỗi kết nối Backend!"); } 
-    finally { setLoading(false); }
+    } catch (err) { 
+        console.error("Lỗi fetch:", err); 
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  // 💡 HÀM XỬ LÝ IMPORT EXCEL (ĐÃ FIX LỖI UNUSED ERR)
+  const handleImportExcel = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    showSystemNotify("Đang xử lý dữ liệu Excel...", "success");
+
+    try {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/Products/import`, formData, {
+        headers: { ...headers, 'Content-Type': 'multipart/form-data' }
+      });
+      showSystemNotify("Đã nạp toàn bộ sản phẩm từ Excel! 📊");
+      fetchProducts();
+    } catch (err) {
+      console.error("Import Error:", err); // 💡 Dùng biến err ở đây để hết lỗi gạch đỏ
+      showSystemNotify(err.response?.data?.error || "Lỗi file Excel hoặc định dạng không đúng!", "error");
+    } finally {
+      e.target.value = null; 
+    }
+  };
 
   const validateForm = () => {
     let tempErrors = {};
@@ -61,7 +87,7 @@ const ProductManager = () => {
       await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${product.id}`, updated, { headers });
       showSystemNotify(`Đã cập nhật trạng thái món!`);
       fetchProducts();
-    } catch { showSystemNotify("Lỗi cập nhật!", "error"); }
+    } catch (err) { console.error(err); showSystemNotify("Lỗi cập nhật!", "error"); }
   };
 
   const handleDelete = async (id) => {
@@ -70,7 +96,7 @@ const ProductManager = () => {
         await axios.delete(`${import.meta.env.VITE_API_URL}/api/Products/${id}`, { headers });
         showSystemNotify("Đã xóa vĩnh viễn sản phẩm!");
         fetchProducts();
-      } catch { showSystemNotify("Lỗi xóa dữ liệu!", "error"); }
+      } catch (err) { console.error(err); showSystemNotify("Lỗi xóa dữ liệu!", "error"); }
     }
   };
 
@@ -123,7 +149,7 @@ const ProductManager = () => {
       }
       setIsModalOpen(false);
       fetchProducts();
-    } catch { showSystemNotify("Lỗi 400: Sếp check lại Backend nhé!", "error"); }
+    } catch (err) { console.error(err); showSystemNotify("Lỗi 400: Sếp check lại Backend nhé!", "error"); }
   };
 
   return (
@@ -134,21 +160,30 @@ const ProductManager = () => {
         </div>
       )}
 
-      <div className="flex justify-between items-center bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-800 tracking-tight italic uppercase">Kho <span className="text-blue-600">HieuStore</span></h1>
           <p className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-widest italic">Quản lý Menu & Hình ảnh (Tổng: {products.length} món)</p>
         </div>
-        <button onClick={() => { setEditingId(null); setErrors({}); setNewProduct({ productName: '', categoryId: 1, description: '', isActive: true }); setSizes({ M: { active: true, price: '' }, L: { active: false, price: '' }, XL: { active: false, price: '' } }); setImageFile(null); setIsModalOpen(true); }} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black shadow-xl hover:bg-blue-700 transition-all active:scale-95 text-xs tracking-widest">+ THÊM MÓN</button>
+        
+        <div className="flex gap-3">
+          <input type="file" ref={fileInputRef} onChange={handleImportExcel} accept=".xlsx, .xls" className="hidden" />
+          <button onClick={() => fileInputRef.current.click()} className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-6 py-4 rounded-2xl font-black text-[10px] tracking-widest uppercase hover:bg-emerald-600 hover:text-white transition-all active:scale-95 shadow-sm">
+            📥 Import Excel
+          </button>
+          <button onClick={() => { setEditingId(null); setErrors({}); setNewProduct({ productName: '', categoryId: 1, description: '', isActive: true }); setSizes({ M: { active: true, price: '' }, L: { active: false, price: '' }, XL: { active: false, price: '' } }); setImageFile(null); setIsModalOpen(true); }} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black shadow-xl hover:bg-blue-700 transition-all active:scale-95 text-[10px] tracking-widest uppercase">
+            + THÊM MÓN
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 relative">
+      <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 relative overflow-hidden">
         <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b border-gray-100 font-black text-xs text-gray-400 uppercase tracking-widest">
+          <thead className="bg-gray-50 border-b border-gray-100 font-black text-[10px] text-gray-400 uppercase tracking-[0.2em]">
             <tr><th className="p-8">Sản Phẩm</th><th className="p-8 text-center">Trạng Thái</th><th className="p-8 text-right">Thao Tác</th></tr>
           </thead>
           
-          {/* 💡 SỬ DỤNG COMPONENT PHÂN TRANG (DÀNH CHO BẢNG) */}
           {loading ? (
             <tbody><tr><td colSpan="3" className="p-20 text-center font-black text-gray-300 italic animate-pulse uppercase">Đang đồng bộ...</td></tr></tbody>
           ) : products.length === 0 ? (
@@ -156,8 +191,8 @@ const ProductManager = () => {
           ) : (
             <PaginatedList 
               data={products} 
-              itemsPerPage={6} // Tùy chỉnh số lượng món ăn / 1 trang
-              isTable={true}   // Khai báo đây là bảng <table>
+              itemsPerPage={6} 
+              isTable={true}
               renderItem={(item) => (
                 <tr key={item.id} className={`border-b border-gray-50 hover:bg-blue-50/20 transition-all ${!item.isActive ? 'bg-gray-50/30' : ''}`}>
                   <td className="p-8">
@@ -189,7 +224,7 @@ const ProductManager = () => {
         </table>
       </div>
 
-      {/* --- MODAL XEM CHI TIẾT --- */}
+      {/* --- MODAL CHI TIẾT --- */}
       {isDetailOpen && selectedProduct && (
         <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-[3rem] p-10 w-full max-w-lg shadow-2xl relative animate-fadeIn border border-gray-100">
@@ -201,7 +236,6 @@ const ProductManager = () => {
                   <span>{selectedProduct.hasOptions ? "Gốc (Size M):" : "Giá bán:"}</span> 
                   <span className="text-gray-900 text-lg">{selectedProduct.basePrice?.toLocaleString()}đ</span>
                 </div>
-                
                 {selectedProduct.hasOptions && (
                   <>
                     <div className="flex justify-between border-b border-gray-200 pb-3"><span>Giá Size L:</span> <span className="text-blue-600 text-lg">{(selectedProduct.basePrice + selectedProduct.sizeUpPrice)?.toLocaleString()}đ</span></div>
@@ -214,7 +248,7 @@ const ProductManager = () => {
         </div>
       )}
 
-      {/* --- MODAL THÊM / SỬA MÓN --- */}
+      {/* --- MODAL THÊM / SỬA --- */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-[3rem] p-12 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto border-4 border-blue-50 custom-scrollbar">
@@ -227,7 +261,6 @@ const ProductManager = () => {
                   <input type="text" value={newProduct.productName} onChange={e => {setNewProduct({...newProduct, productName: e.target.value}); if (errors.productName) setErrors({...errors, productName: null});}} className={`w-full p-5 bg-gray-50 rounded-[1.5rem] font-black outline-none border-2 transition-all text-lg ${errors.productName ? 'border-rose-500 bg-rose-50' : 'border-transparent focus:border-blue-500'}`} />
                   {errors.productName && <p className="text-[10px] text-rose-500 font-black mt-2 ml-4 uppercase italic">⚠ {errors.productName}</p>}
                 </div>
-                
                 <div className="col-span-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Danh Mục</label>
                   <select value={newProduct.categoryId} onChange={e => setNewProduct({...newProduct, categoryId: parseInt(e.target.value)})} className="w-full p-5 bg-gray-50 rounded-[1.5rem] font-black outline-none border-2 border-transparent focus:border-blue-500">
@@ -236,7 +269,6 @@ const ProductManager = () => {
                     <option value={3}>3 - Ăn Vặt</option>
                   </select>
                 </div>
-
                 <div className="col-span-1">
                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Hiển Thị</label>
                    <div className="flex items-center gap-4 bg-gray-50 p-5 rounded-[1.5rem] h-[68px] border-2 border-transparent">
@@ -244,19 +276,13 @@ const ProductManager = () => {
                      <input type="checkbox" checked={newProduct.isActive} onChange={e => setNewProduct({...newProduct, isActive: e.target.checked})} className="w-6 h-6 accent-blue-600 cursor-pointer" />
                    </div>
                 </div>
-
                 <div className="col-span-2 space-y-4 animate-fadeIn">
-                   <label className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] ml-4 block">
-                     {parseInt(newProduct.categoryId) === 3 ? "Giá Bán Sản Phẩm (VNĐ)" : "Giá Bán Theo Size (VNĐ)"}
-                   </label>
+                   <label className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] ml-4 block">Giá Bán (VNĐ)</label>
                    <div className="bg-gray-50 p-6 rounded-[2.5rem] space-y-4">
                       <div className="flex items-center gap-4">
-                        <span className="font-black text-gray-400 uppercase text-[9px] w-16">
-                          {parseInt(newProduct.categoryId) === 3 ? "GIÁ BÁN" : "Size M"}
-                        </span>
+                        <span className="font-black text-gray-400 uppercase text-[9px] w-16">{parseInt(newProduct.categoryId) === 3 ? "GIÁ BÁN" : "Size M"}</span>
                         <input type="number" placeholder="Giá..." value={sizes.M.price} onChange={e => {setSizes({...sizes, M: {...sizes.M, price: e.target.value}}); if (errors.priceM) setErrors({...errors, priceM: null});}} className={`flex-1 p-3 rounded-xl outline-none font-black text-lg border ${errors.priceM ? 'border-rose-500' : 'border-transparent'}`} />
                       </div>
-                      
                       {parseInt(newProduct.categoryId) !== 3 && (
                         <>
                           <div className={`flex items-center gap-4 p-3 rounded-xl transition-all ${sizes.L.active ? 'bg-blue-100/50' : 'opacity-40'}`}>
@@ -273,31 +299,19 @@ const ProductManager = () => {
                       )}
                    </div>
                 </div>
-
                 <div className="col-span-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Mô tả món ăn</label>
                   <textarea value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} className="w-full p-5 bg-gray-50 rounded-[1.5rem] font-black outline-none h-24 border-2 border-transparent focus:border-blue-500 italic text-sm transition-all resize-none" placeholder="Nhập mô tả hấp dẫn..."></textarea>
                 </div>
-
                 <div className="col-span-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">
-                        {editingId ? "Thay đổi ảnh món (Bỏ trống nếu giữ nguyên)" : "Hình ảnh sản phẩm *"}
-                    </label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">{editingId ? "Thay đổi ảnh món" : "Hình ảnh sản phẩm *"}</label>
                     <div className="flex items-center gap-4">
-                        <input 
-                            type="file" 
-                            accept="image/*" 
-                            onChange={e => {setImageFile(e.target.files[0]); if (errors.image) setErrors({...errors, image: null});}} 
-                            className={`flex-1 p-4 bg-gray-50 rounded-[1.5rem] font-black text-xs border-2 ${errors.image ? 'border-rose-500 bg-rose-50' : 'border-transparent'}`} 
-                        />
-                        {editingId && !imageFile && (
-                            <span className="text-[9px] font-black text-blue-500 uppercase italic">Đang dùng ảnh cũ</span>
-                        )}
+                        <input type="file" accept="image/*" onChange={e => {setImageFile(e.target.files[0]); if (errors.image) setErrors({...errors, image: null});}} className={`flex-1 p-4 bg-gray-50 rounded-[1.5rem] font-black text-xs border-2 ${errors.image ? 'border-rose-500 bg-rose-50' : 'border-transparent'}`} />
+                        {editingId && !imageFile && ( <span className="text-[9px] font-black text-blue-500 uppercase italic">Ảnh cũ</span> )}
                     </div>
                     {errors.image && <p className="text-[10px] text-rose-500 font-black mt-2 ml-4 uppercase italic">⚠ {errors.image}</p>}
                 </div>
             </div>
-
             <div className="flex gap-6 mt-12">
                 <button onClick={() => setIsModalOpen(false)} className="flex-1 py-6 bg-gray-100 rounded-[2rem] font-black text-gray-400 uppercase tracking-[0.2em] hover:bg-gray-200 transition-all text-xs">Đóng lại</button>
                 <button onClick={handleSave} className="flex-[2] py-6 bg-blue-600 text-white rounded-[2rem] font-black shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95 uppercase tracking-[0.2em] text-xs">Lưu Dữ Liệu 🚀</button>

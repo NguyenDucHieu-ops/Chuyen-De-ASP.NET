@@ -5,6 +5,7 @@ using NguyenDucHieu_2123110416.Data;
 using NguyenDucHieu_2123110416.DTOs;
 using NguyenDucHieu_2123110416.Models;
 using System.Security.Claims;
+using ClosedXML.Excel; 
 
 namespace NguyenDucHieu_2123110416.Controllers
 {
@@ -63,7 +64,62 @@ namespace NguyenDucHieu_2123110416.Controllers
             }
             catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
         }
+        [HttpPost("import")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ImportExcel(IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest(new { error = "Sếp chưa chọn file Excel!" });
 
+            try
+            {
+                var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                int successCount = 0;
+
+                using (var stream = new MemoryStream())
+                {
+                    await file.CopyToAsync(stream);
+                    using (var workbook = new XLWorkbook(stream))
+                    {
+                        var worksheet = workbook.Worksheet(1);
+
+                        // 💡 CHỖ NÀY QUAN TRỌNG: 
+                        // Nếu file Excel của sếp có dòng tiêu đề (Tên, Giá...) thì dùng .Skip(1)
+                        // Nếu sếp điền dữ liệu ngay dòng đầu tiên thì XÓA .Skip(1) đi.
+                        var rows = worksheet.RangeUsed().RowsUsed(); // Tạm thời bỏ Skip(1) để sếp test dòng đầu
+
+                        foreach (var row in rows)
+                        {
+                            var name = row.Cell(1).GetValue<string>();
+                            if (string.IsNullOrWhiteSpace(name) || name == "Tên Sản Phẩm") continue; // Bỏ qua dòng trống hoặc dòng tiêu đề nếu có
+
+                            var product = new Product
+                            {
+                                ProductName = name,
+                                CategoryId = row.Cell(2).GetValue<int>(), // ⚠️ Sếp check xem ID 2 có trong bảng Categories chưa nha
+                                BasePrice = row.Cell(3).GetValue<decimal>(),
+                                Description = row.Cell(4).GetValue<string>() ?? "",
+                                IsActive = true,
+                                IsDeleted = false,
+                                HasOptions = true,
+                                ImageUrl = "/images/products/default.png",
+                                CreatedBy = adminId,
+                                CreatedAt = DateTime.Now
+                            };
+                            _context.Products.Add(product);
+                            successCount++;
+                        }
+
+                        if (successCount > 0) await _context.SaveChangesAsync();
+                    }
+                }
+
+                return Ok(new { message = $"Hệ thống đã nạp thành công {successCount} món vào kho! ✨" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = "Lỗi dữ liệu: Sếp kiểm tra lại cột CategoryId xem có khớp với danh mục thực tế không nhé! " + ex.Message });
+            }
+        }
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
         // 💡 ĐỔI TỪ [FromBody] SANG [FromForm] ĐỂ NHẬN ĐƯỢC FILE ẢNH

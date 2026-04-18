@@ -6,6 +6,7 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('hieu_store_token');
 
+  // --- STATE QUẢN LÝ DỮ LIỆU ---
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState([]);
   const [vouchers, setVouchers] = useState([]);
@@ -16,6 +17,7 @@ const ProfilePage = () => {
   const [formData, setFormData] = useState({ fullName: '', phone: '', address: '' });
   const [loadingUpdate, setLoadingUpdate] = useState(false);
 
+  // --- STATE QUẢN LÝ REVIEW ---
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [rating, setRating] = useState(5);
@@ -23,12 +25,14 @@ const ProfilePage = () => {
   const [images, setImages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // --- THÔNG BÁO HỆ THỐNG ---
   const [notify, setNotify] = useState({ show: false, msg: '', type: 'success' });
   const showToast = (msg, type = 'success') => {
     setNotify({ show: true, msg, type });
     setTimeout(() => setNotify({ show: false, msg: '', type: 'success' }), 3000);
   };
 
+  // --- FETCH DỮ LIỆU TỪ BACKEND ---
   const fetchData = async () => {
     const headers = { Authorization: `Bearer ${token}` };
     try {
@@ -39,12 +43,18 @@ const ProfilePage = () => {
       ]);
       setUser(uRes.data);
       setFormData({
-        fullName: uRes.data.fullName || '', phone: uRes.data.phone || '', address: uRes.data.address || ''
+        fullName: uRes.data.fullName || '', 
+        phone: uRes.data.phone || '', 
+        address: uRes.data.address || ''
       });
       setOrders(oRes.data);
       setVouchers(vRes.data);
-    } catch { 
-      localStorage.removeItem('hieu_store_token'); navigate('/login');
+    } catch (err) { 
+      console.error("Lỗi tải dữ liệu:", err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('hieu_store_token'); 
+        navigate('/login');
+      }
     } finally { setLoadingOrders(false); }
   };
 
@@ -53,6 +63,7 @@ const ProfilePage = () => {
     else fetchData();
   }, [token]);
 
+  // --- XỬ LÝ ĐỔI VOUCHER ---
   const handleRedeemVoucher = async (voucher) => {
     if (!voucher.pointsRequired || voucher.pointsRequired === 0) {
       navigator.clipboard.writeText(voucher.code);
@@ -77,30 +88,36 @@ const ProfilePage = () => {
     }
   };
 
+  // --- XỬ LÝ CẬP NHẬT HỒ SƠ ---
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setLoadingUpdate(true);
     try {
-      await axios.put(`${import.meta.env.VITE_API_URL}/api/Users/profile`, formData, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/Users/profile`, formData, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
       setUser({ ...user, ...formData });
-      setIsEditing(false); showToast('Cập nhật hồ sơ thành công! ✨');
-    } catch { showToast('Lỗi cập nhật, sếp kiểm tra lại backend nhé!', 'error'); } 
-    finally { setLoadingUpdate(false); }
+      setIsEditing(false); 
+      showToast('Cập nhật hồ sơ thành công! ✨');
+    } catch { 
+      showToast('Lỗi cập nhật, sếp kiểm tra lại backend nhé!', 'error'); 
+    } finally { setLoadingUpdate(false); }
   };
 
+  // --- XỬ LÝ GỬI ĐÁNH GIÁ ---
   const handleSubmitReview = async () => {
     if (!comment.trim()) return showToast("Sếp viết vài chữ review nhé!", "error");
     setIsSubmitting(true);
     
     const submitData = new FormData();
-    const productId = selectedOrder?.orderDetails?.[0]?.productId || selectedOrder?.orderDetails?.[0]?.product?.id;
+    // Lấy productId từ đơn hàng đã chọn
+    const productId = selectedOrder?.orderDetails?.[0]?.productId;
     
     if (!productId) {
         setIsSubmitting(false);
         return showToast("Không tìm thấy món ăn trong đơn này để đánh giá!", "error");
     }
 
-    // 💡 ÉP KIỂU SỐ (NUMBER) TẠI ĐÂY ĐỂ C# KHÔNG QUĂNG LỖI 400
     submitData.append('ProductId', Number(productId)); 
     submitData.append('OrderId', Number(selectedOrder.id));
     submitData.append('Rating', Number(rating));
@@ -116,11 +133,12 @@ const ProfilePage = () => {
       });
       showToast("Cảm ơn sếp đã đánh giá! ⭐");
       setShowReviewModal(false); setComment(''); setImages([]); setRating(5);
+      
+      // 💡 CẬP NHẬT STATE NGAY LẬP TỨC ĐỂ KHÓA NÚT
       setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, isReviewed: true } : o));
     } catch (err) { 
       showToast(err.response?.data?.error || "Lỗi đánh giá!", "error"); 
-    } 
-    finally { setIsSubmitting(false); }
+    } finally { setIsSubmitting(false); }
   };
 
   const handleLogout = () => {
@@ -131,6 +149,7 @@ const ProfilePage = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-12 relative animate-fadeIn">
+      {/* NOTIFY TOAST */}
       {notify.show && (
         <div className={`fixed top-10 right-10 z-[200] px-8 py-4 rounded-2xl font-black uppercase text-[10px] shadow-2xl animate-bounce tracking-widest ${notify.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
           {notify.msg}
@@ -147,8 +166,9 @@ const ProfilePage = () => {
             <h1 className="text-4xl font-black text-gray-900 uppercase italic mb-1 tracking-tighter">{user.fullName || "Đang tải..."}</h1>
             <p className="text-gray-500 font-bold text-sm mb-4">{user.email}</p>
             <div className="flex gap-3">
-              <span className="bg-emerald-50 text-emerald-700 px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest">
-                ⭐ {(user.currentPoints || 0).toLocaleString()} Điểm
+              {/* 💡 HIỂN THỊ ĐIỂM TẠI ĐÂY */}
+              <span className="bg-emerald-50 text-emerald-700 px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-emerald-100">
+                ⭐ {(user.currentPoints || 0).toLocaleString()} Điểm thưởng
               </span>
             </div>
           </div>
@@ -174,10 +194,10 @@ const ProfilePage = () => {
           </button>
         </div>
 
-        {/* CỘT PHẢI: NỘI DUNG TAB */}
+        {/* CỘT PHẢI: NỘI DUNG */}
         <div className="lg:col-span-9">
           
-          {/* TAB 1: ĐƠN HÀNG */}
+          {/* --- TAB 1: ĐƠN HÀNG --- */}
           {activeTab === 'orders' && (
             <div className="space-y-6 animate-fadeIn">
               <h3 className="text-2xl font-black text-gray-800 mb-8 uppercase italic flex items-center gap-4">
@@ -197,7 +217,7 @@ const ProfilePage = () => {
                     const isCompleted = order.orderStatus === 2 || order.orderStatus === '2' || order.orderStatus === 'Completed';
                     const isCancelled = order.orderStatus === 3 || order.orderStatus === '3' || order.orderStatus === 'Cancelled';
                     
-                    // 💡 TÍNH TOÁN THỜI HẠN ĐÁNH GIÁ (2 NGÀY)
+                    // 💡 Tính toán hạn review 2 ngày
                     const completedDate = new Date(order.updatedAt || order.createdAt);
                     const daysPassed = (new Date() - completedDate) / (1000 * 60 * 60 * 24);
                     const isReviewable = daysPassed <= 2; 
@@ -207,7 +227,7 @@ const ProfilePage = () => {
                         <div className="space-y-2">
                           <p className="font-black text-gray-900 text-xl tracking-tighter uppercase">Mã đơn #HIEU-{order.id}</p>
                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 italic">
-                            🗓️ {new Date(order.createdAt).toLocaleDateString('vi-VN')} | {new Date(order.createdAt).toLocaleTimeString('vi-VN')}
+                            🗓️ {new Date(order.createdAt).toLocaleString('vi-VN')}
                           </p>
                         </div>
                         <div className="flex flex-col md:flex-row md:items-center gap-6 w-full md:w-auto border-t md:border-t-0 pt-6 md:pt-0 border-gray-100">
@@ -217,34 +237,35 @@ const ProfilePage = () => {
                               isCompleted ? 'bg-emerald-50 text-emerald-600' : 
                               isCancelled ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'
                             }`}>
-                              {isCompleted ? '✓ Đã hoàn thành' : 
-                               isCancelled ? '✕ Đã hủy' : '● Đang xử lý'}
+                              {isCompleted ? '✓ Đã hoàn thành' : isCancelled ? '✕ Đã hủy' : '● Đang xử lý'}
                             </div>
                           </div>
                           
-                          {/* HIỆN NÚT ĐÁNH GIÁ (NẾU CHƯA ĐÁNH GIÁ VÀ CÒN HẠN) */}
-                          {isCompleted && !order.isReviewed && isReviewable && (
-                            <button 
-                              onClick={() => { setSelectedOrder(order); setShowReviewModal(true); }}
-                              className="w-full md:w-auto bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-indigo-700 active:scale-95 transition-all"
-                            >
-                              ⭐ Đánh giá
-                            </button>
-                          )}
-
-                          {/* HIỆN CHỮ QUÁ HẠN (NẾU CHƯA ĐÁNH GIÁ MÀ QUÁ 2 NGÀY) */}
-                          {isCompleted && !order.isReviewed && !isReviewable && (
-                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-4 py-2 bg-gray-100 rounded-xl line-through">
-                              Quá hạn đánh giá
-                            </span>
-                          )}
-
-                          {/* HIỆN CHỮ ĐÃ ĐÁNH GIÁ */}
-                          {isCompleted && order.isReviewed && (
-                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest px-4 py-2 bg-emerald-50 rounded-xl">
-                              ✓ Đã đánh giá
-                            </span>
-                          )}
+                          <div className="flex items-center">
+                            {isCompleted && (
+                              <>
+                                {order.isReviewed ? (
+                                  /* 💡 NÚT ĐÃ ĐÁNH GIÁ: MÀU ĐEN ĐẬM, KHÓA BẤM, IN ĐẬM THEO Ý SẾP */
+                                  <button disabled className="w-full md:w-auto bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 opacity-90 cursor-not-allowed border-2 border-gray-800">
+                                    <span className="text-yellow-400">★</span> ĐÃ ĐÁNH GIÁ
+                                  </button>
+                                ) : isReviewable ? (
+                                  /* CHƯA ĐÁNH GIÁ & CÒN HẠN */
+                                  <button 
+                                    onClick={() => { setSelectedOrder(order); setShowReviewModal(true); }}
+                                    className="w-full md:w-auto bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all"
+                                  >
+                                    ⭐ Đánh giá ngay
+                                  </button>
+                                ) : (
+                                  /* CHƯA ĐÁNH GIÁ NHƯNG QUÁ HẠN 2 NGÀY */
+                                  <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest px-6 py-4 bg-gray-50 rounded-2xl border border-gray-100 italic">
+                                    Quá hạn Review
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -254,53 +275,43 @@ const ProfilePage = () => {
             </div>
           )}
 
-          {/* TAB 2: KHO VOUCHER */}
+          {/* --- TAB 2: VOUCHER --- */}
           {activeTab === 'vouchers' && (
             <div className="space-y-6 animate-fadeIn">
-               <div className="flex justify-between items-center mb-8">
+              <div className="flex justify-between items-center mb-8">
                 <h3 className="text-2xl font-black text-gray-800 uppercase italic flex items-center gap-4">
                   <div className="w-2 h-8 bg-amber-500 rounded-full"></div> Ưu đãi của tôi
                 </h3>
-                <div className="bg-amber-50 text-amber-600 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest">
-                   Hiện có: {(user.currentPoints || 0).toLocaleString()} Điểm
+                <div className="bg-amber-50 text-amber-600 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-amber-100">
+                  Hiện có: {(user.currentPoints || 0).toLocaleString()} Điểm
                 </div>
               </div>
-
-              {vouchers.length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-[3rem] border border-gray-100 shadow-sm text-gray-400 font-black text-sm uppercase italic">
-                   Hiện chưa có mã giảm giá nào.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   {vouchers.map(v => (
-                     <div key={v.id} className="bg-white p-8 rounded-[2.5rem] border-2 border-dashed border-amber-200 hover:border-amber-400 transition-all flex flex-col justify-between h-full relative overflow-hidden group">
-                        <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-50 rounded-full group-hover:scale-150 transition-transform duration-500 z-0"></div>
-                        <div className="z-10">
-                          <p className="text-3xl font-black text-amber-600 mb-1">{v.discountAmount?.toLocaleString()}đ</p>
-                          <p className="font-black text-gray-800 text-lg uppercase tracking-tight">{v.code}</p>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase mt-2">{v.description || "Áp dụng cho mọi đơn hàng"}</p>
-                        </div>
-                        <div className="z-10 mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
-                          <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest">HSD: {new Date(v.expiryDate).toLocaleDateString('vi-VN')}</p>
-                          <button 
-                            onClick={() => handleRedeemVoucher(v)}
-                            className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                              v.pointsRequired > 0 
-                                ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-200' 
-                                : 'bg-gray-900 text-white hover:bg-gray-700'
-                            }`}
-                          >
-                            {v.pointsRequired > 0 ? `Đổi ${v.pointsRequired} Điểm` : 'Copy Mã'}
-                          </button>
-                        </div>
-                     </div>
-                   ))}
-                </div>
-              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {vouchers.map(v => (
+                  <div key={v.id} className="bg-white p-8 rounded-[2.5rem] border-2 border-dashed border-amber-200 hover:border-amber-400 transition-all flex flex-col justify-between h-full relative overflow-hidden group">
+                    <div className="z-10">
+                      <p className="text-3xl font-black text-amber-600 mb-1">{v.discountAmount?.toLocaleString()}đ</p>
+                      <p className="font-black text-gray-800 text-lg uppercase tracking-tight">{v.code}</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase mt-2">{v.description || "Áp dụng cho mọi đơn hàng"}</p>
+                    </div>
+                    <div className="z-10 mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
+                      <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest">HSD: {new Date(v.expiryDate).toLocaleDateString('vi-VN')}</p>
+                      <button 
+                        onClick={() => handleRedeemVoucher(v)} 
+                        className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                          v.pointsRequired > 0 ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-200' : 'bg-gray-900 text-white hover:bg-gray-700'
+                        }`}
+                      >
+                        {v.pointsRequired > 0 ? `Đổi ${v.pointsRequired} Điểm` : 'Copy Mã'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* TAB 3: THÔNG TIN TÀI KHOẢN */}
+          {/* --- TAB 3: THÔNG TIN TÀI KHOẢN --- */}
           {activeTab === 'settings' && (
             <div className="bg-white p-10 md:p-14 rounded-[3.5rem] border border-gray-100 shadow-sm animate-fadeIn">
               <div className="flex justify-between items-center mb-10">
@@ -339,18 +350,16 @@ const ProfilePage = () => {
               </form>
             </div>
           )}
-
         </div>
       </div>
 
-      {/* ⭐ REVIEW MODAL */}
+      {/* --- MODAL REVIEW: GIỮ NGUYÊN ĐỦ LOGIC --- --- */}
       {showReviewModal && (
         <div className="fixed inset-0 bg-gray-900/90 backdrop-blur-md z-[150] flex items-center justify-center p-6">
           <div className="bg-white rounded-[3.5rem] w-full max-w-2xl p-12 shadow-2xl animate-fadeIn relative">
             <button onClick={() => setShowReviewModal(false)} className="absolute top-10 right-10 text-3xl font-black text-gray-300 hover:text-rose-500 transition-colors">×</button>
             <h2 className="text-3xl font-black mb-2 uppercase italic text-indigo-600">Đánh giá chất lượng</h2>
             <p className="text-gray-400 text-xs font-bold uppercase mb-8 tracking-widest">Cho đơn hàng #HIEU-{selectedOrder?.id}</p>
-
             <div className="space-y-8">
               <div className="flex justify-center gap-4 text-5xl">
                 {[1, 2, 3, 4, 5].map(s => (

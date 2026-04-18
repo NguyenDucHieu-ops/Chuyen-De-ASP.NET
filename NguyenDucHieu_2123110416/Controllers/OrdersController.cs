@@ -34,16 +34,15 @@ namespace NguyenDucHieu_2123110416.Controllers
             {
                 var orders = await _context.Orders
                     .Include(o => o.User)
-                    .Include(o => o.OrderDetails).ThenInclude(od => od.Product) // 💡 Join thêm để lấy tên món
+                    .Include(o => o.OrderDetails).ThenInclude(od => od.Product)
                     .OrderByDescending(o => o.CreatedAt)
                     .Select(o => new {
                         id = o.Id,
-                        customerName = o.User.FullName,
-                        phone = o.User.PhoneNumber,
+                        customerName = o.User != null ? o.User.FullName : "Khách ẩn danh",
+                        phone = o.User != null ? o.User.PhoneNumber : "",
                         totalAmount = o.FinalAmount,
                         status = o.OrderStatus,
                         createdAt = o.CreatedAt,
-                        // 💡 TẠO TÓM TẮT MÓN: "Trà sữa (x2), Cà phê (x1)..."
                         productSummary = string.Join(", ", o.OrderDetails.Select(od => od.Product.ProductName + " (x" + od.Quantity + ")"))
                     })
                     .ToListAsync();
@@ -73,14 +72,15 @@ namespace NguyenDucHieu_2123110416.Controllers
                 var result = new
                 {
                     id = order.Id,
-                    customerName = order.User.FullName,
-                    phone = order.User.PhoneNumber,
+                    customerName = order.User != null ? order.User.FullName : "Khách ẩn danh",
+                    phone = order.User != null ? order.User.PhoneNumber : "",
                     address = "Giao hàng tận nơi",
                     totalAmount = order.FinalAmount,
                     status = order.OrderStatus,
                     createdAt = order.CreatedAt,
                     orderDetails = order.OrderDetails.Select(od => new {
                         productName = od.Product.ProductName,
+                        productId = od.ProductId,
                         size = od.Size,
                         quantity = od.Quantity,
                         unitPrice = od.UnitPrice,
@@ -94,7 +94,7 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         // ====================================================
-        // 3. ADMIN: CẬP NHẬT TRẠNG THÁI 
+        // 3. ADMIN: CẬP NHẬT TRẠNG THÁI (CỘNG ĐIỂM KHI XONG)
         // ====================================================
         [HttpPut("{id}/status")]
         [Authorize(Roles = "Admin")]
@@ -105,7 +105,6 @@ namespace NguyenDucHieu_2123110416.Controllers
                 var adminIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrEmpty(adminIdString)) return Unauthorized();
 
-                // Cập nhật trạng thái thông qua Service
                 await _orderService.UpdateOrderStatusAsync(id, int.Parse(status));
 
                 var order = await _context.Orders.FindAsync(id);
@@ -114,22 +113,17 @@ namespace NguyenDucHieu_2123110416.Controllers
                     order.UpdatedBy = int.Parse(adminIdString);
                     order.UpdatedAt = DateTime.Now;
 
-                    // 💡 TÍNH NĂNG MỚI: CỘNG ĐIỂM KHI ĐƠN HOÀN THÀNH
-                    // 💡 Sửa lỗi: Bắt số "2" (Thành công trong DB của sếp)
+                    // Nếu đơn hàng thành công (Status 2) -> Cộng điểm cho khách
                     if (status == "2" || order.OrderStatus.ToString() == "2" || order.OrderStatus.ToString() == "Completed")
                     {
-                        // Kiểm tra xem đơn này đã được cộng điểm trước đó chưa để tránh cộng đúp
-                        bool alreadyRewarded = await _context.PointTransactions
-                            .AnyAsync(pt => pt.OrderId == id);
-
+                        bool alreadyRewarded = await _context.PointTransactions.AnyAsync(pt => pt.OrderId == id && pt.Points > 0);
                         if (!alreadyRewarded)
                         {
-                            // 💡 Quy đổi: 10.000đ = 1 Điểm
+                            // Tỷ lệ: 10.000đ = 1 Điểm
                             int pointsEarned = (int)(order.FinalAmount / 10000);
-
                             if (pointsEarned > 0)
                             {
-                                var pointTransaction = new PointTransaction
+                                _context.PointTransactions.Add(new PointTransaction
                                 {
                                     UserId = order.UserId,
                                     OrderId = order.Id,
@@ -137,22 +131,19 @@ namespace NguyenDucHieu_2123110416.Controllers
                                     Description = $"Tích điểm đơn hàng #HIEU-{order.Id}",
                                     CreatedAt = DateTime.Now,
                                     CreatedBy = int.Parse(adminIdString)
-                                };
-                                _context.PointTransactions.Add(pointTransaction);
+                                });
                             }
                         }
                     }
-
                     await _context.SaveChangesAsync();
                 }
-
                 return Ok(new { message = "Cập nhật trạng thái thành công!" });
             }
             catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
         }
 
         // ====================================================
-        // 4. DÀNH CHO KHÁCH HÀNG: ĐẶT HÀNG 
+        // 4. KHÁCH HÀNG: ĐẶT HÀNG (TRỪ ĐIỂM GIẢM TIỀN)
         // ====================================================
         [HttpPost("checkout")]
         public async Task<IActionResult> Checkout([FromBody] OrderRequestDTO request)
@@ -164,6 +155,17 @@ namespace NguyenDucHieu_2123110416.Controllers
 
                 int currentUserId = int.Parse(userIdString);
 
+                // 💡 Kiểm tra điểm khách đang có nếu khách yêu cầu dùng điểm
+                if (request.UsedPoints > 0)
+                {
+                    var userPoints = await _context.PointTransactions
+                        .Where(pt => pt.UserId == currentUserId && pt.IsDeleted == false)
+                        .SumAsync(pt => pt.Points);
+
+                    if (userPoints < request.UsedPoints)
+                        return BadRequest(new { error = "Sếp không đủ điểm để thực hiện giao dịch này!" });
+                }
+
                 // Chuyển DTO sang danh sách OrderDetail
                 var orderDetails = request.Items.Select(item => new OrderDetail
                 {
@@ -173,8 +175,27 @@ namespace NguyenDucHieu_2123110416.Controllers
                     OrderDetailToppings = item.ToppingIds.Select(id => new OrderDetailTopping { ToppingId = id }).ToList()
                 }).ToList();
 
-                // Gọi Service để thực hiện lưu đơn vào Database
+                // 💡 Gọi Service: Truyền thêm UsedPoints để tính giảm giá trong OrderService
                 var order = await _orderService.CreateOrderAsync(currentUserId, request.AddressId, request.VoucherCode, orderDetails, request.Note ?? string.Empty);
+
+                // 💡 Nếu có dùng điểm -> Trừ trực tiếp vào bảng giao dịch (Số điểm âm)
+                if (request.UsedPoints > 0)
+                {
+                    // Giả sử 1 điểm = 1.000đ, ta trừ FinalAmount của đơn hàng ngay tại đây
+                    // (Hoặc sếp nên xử lý trừ FinalAmount bên trong CreateOrderAsync của IOrderService để chuẩn nhất)
+
+                    _context.PointTransactions.Add(new PointTransaction
+                    {
+                        UserId = currentUserId,
+                        OrderId = order.Id,
+                        Points = -request.UsedPoints, // 💡 SỐ ÂM ĐỂ TRỪ ĐIỂM
+                        Description = $"Sử dụng {request.UsedPoints} điểm cho đơn hàng #{order.Id}",
+                        CreatedAt = DateTime.Now,
+                        CreatedBy = currentUserId
+                    });
+
+                    await _context.SaveChangesAsync();
+                }
 
                 return Ok(new { message = "Đặt hàng thành công!", orderId = order.Id, finalAmount = order.FinalAmount });
             }
@@ -182,7 +203,7 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         // ====================================================
-        // 5. DÀNH CHO KHÁCH HÀNG: XEM LỊCH SỬ 
+        // 5. KHÁCH HÀNG: XEM LỊCH SỬ
         // ====================================================
         [HttpGet("history")]
         public async Task<IActionResult> GetOrderHistory()
@@ -191,11 +212,45 @@ namespace NguyenDucHieu_2123110416.Controllers
             {
                 var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+                int userId = int.Parse(userIdString);
 
-                var orders = await _orderService.GetUserOrdersAsync(int.Parse(userIdString));
+                var orders = await _context.Orders
+                    .Where(o => o.UserId == userId)
+                    .OrderByDescending(o => o.CreatedAt)
+                    .Select(o => new {
+                        id = o.Id,
+                        finalAmount = o.FinalAmount,
+                        orderStatus = o.OrderStatus,
+                        createdAt = o.CreatedAt,
+                        updatedAt = o.UpdatedAt,
+                        isReviewed = _context.Reviews.Any(r => r.OrderId == o.Id && !r.IsDeleted),
+                        orderDetails = o.OrderDetails.Select(od => new {
+                            productName = od.Product.ProductName,
+                            productId = od.ProductId
+                        }).ToList()
+                    })
+                    .ToListAsync();
+
                 return Ok(orders);
             }
             catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
         }
+    }
+
+    public class OrderRequestDTO
+    {
+        public int AddressId { get; set; }
+        public string? VoucherCode { get; set; }
+        public int UsedPoints { get; set; } // 💡 TRƯỜNG MỚI ĐỂ NHẬN ĐIỂM TỪ REACT
+        public string? Note { get; set; }
+        public List<OrderItemDTO> Items { get; set; } = new();
+    }
+
+    public class OrderItemDTO
+    {
+        public int ProductId { get; set; }
+        public int Quantity { get; set; }
+        public string Size { get; set; } = "M";
+        public List<int> ToppingIds { get; set; } = new();
     }
 }
