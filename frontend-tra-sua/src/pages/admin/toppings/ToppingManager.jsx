@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import PaginatedList from '../../../components/PaginatedList'; // 💡 IMPORT PHÂN TRANG
 
 const ToppingManager = () => {
   const [toppings, setToppings] = useState([]);
@@ -9,7 +10,6 @@ const ToppingManager = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({ toppingName: '', price: 0, isActive: true });
   
-  // Quản lý lỗi để nhuộm đỏ
   const [errors, setErrors] = useState({});
 
   const token = localStorage.getItem('hieu_store_token');
@@ -30,7 +30,6 @@ const ToppingManager = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Validation trực quan
   const validateForm = () => {
     let tempErrors = {};
     if (!formData.toppingName.trim()) tempErrors.toppingName = "Tên topping không được để trống!";
@@ -39,12 +38,11 @@ const ToppingManager = () => {
     return Object.keys(tempErrors).length === 0;
   };
 
-  // Đổi trạng thái nhanh
   const toggleStatus = async (item) => {
     try {
       await axios.put(`${import.meta.env.VITE_API_URL}/api/Toppings/${item.id}`, 
         { ...item, isActive: !item.isActive }, { headers });
-      alert("✨ Cập nhật trạng thái thành công!"); // THÔNG BÁO
+      alert("✨ Cập nhật trạng thái thành công!"); 
       fetchData();
     } catch { 
       alert("❌ Không thể đổi trạng thái!");
@@ -58,10 +56,10 @@ const ToppingManager = () => {
     try {
       if (editingId) {
         await axios.put(`${import.meta.env.VITE_API_URL}/api/Toppings/${editingId}`, { id: editingId, ...formData }, { headers });
-        alert("✅ Đã cập nhật thông tin topping!"); // THÔNG BÁO
+        alert("✅ Đã cập nhật thông tin topping!"); 
       } else {
         await axios.post(`${import.meta.env.VITE_API_URL}/api/Toppings`, formData, { headers });
-        alert("🎉 Đã thêm topping mới vào kho!"); // THÔNG BÁO
+        alert("🎉 Đã thêm topping mới vào kho!"); 
       }
       setIsModalOpen(false);
       setErrors({});
@@ -75,7 +73,7 @@ const ToppingManager = () => {
     if (window.confirm("Sếp có chắc muốn xóa vĩnh viễn topping này?")) {
       try {
         await axios.delete(`${import.meta.env.VITE_API_URL}/api/Toppings/${id}`, { headers });
-        alert("🗑️ Đã xóa topping thành công!"); // THÔNG BÁO
+        alert("🗑️ Đã xóa topping thành công!"); 
         fetchData();
       } catch { 
         alert("❌ Lỗi xóa! Topping này có thể đang nằm trong đơn hàng.");
@@ -95,7 +93,7 @@ const ToppingManager = () => {
         >+ THÊM MỚI</button>
       </div>
 
-      <div className="bg-white rounded-[3rem] shadow-sm overflow-hidden border border-gray-100">
+      <div className="bg-white rounded-[3rem] shadow-sm border border-gray-100 relative">
         <table className="w-full text-left">
           <thead className="bg-gray-50/50 border-b border-gray-100 text-[10px] text-gray-400 font-black uppercase tracking-widest">
             <tr>
@@ -105,31 +103,41 @@ const ToppingManager = () => {
               <th className="p-8 text-right">Hành Động</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
-            {loading ? (
-              <tr><td colSpan="4" className="p-20 text-center animate-pulse font-black text-gray-300 uppercase">Đang nạp dữ liệu...</td></tr>
-            ) : toppings.map(item => (
-              <tr key={item.id} className="hover:bg-blue-50/30 transition-all group">
-                <td className="p-8">
-                   <div className="font-black text-gray-700 text-lg italic">{item.toppingName}</div>
-                   <div className="text-[10px] text-gray-300 font-bold uppercase mt-1">ID: #TOP-{item.id}</div>
-                </td>
-                <td className="p-8 text-center font-black text-blue-600 text-xl">+{item.price?.toLocaleString()}đ</td>
-                <td className="p-8 text-center">
-                   <button 
-                    onClick={() => toggleStatus(item)}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${item.isActive ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' : 'bg-rose-100 text-rose-600 border border-rose-200'}`}
-                   >
-                     {item.isActive ? '✅ Đang Bán' : '❌ Ngừng Bán'}
-                   </button>
-                </td>
-                <td className="p-8 text-right space-x-3">
-                  <button onClick={() => { setEditingId(item.id); setFormData(item); setErrors({}); setIsModalOpen(true); }} className="bg-gray-100 text-gray-600 p-3 rounded-xl font-black text-[10px] uppercase hover:bg-blue-600 hover:text-white transition-all">Sửa</button>
-                  <button onClick={() => handleDelete(item.id)} className="bg-rose-50 text-rose-400 p-3 rounded-xl font-black text-[10px] uppercase hover:bg-rose-600 hover:text-white transition-all">Xóa</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          
+          {/* 💡 SỬ DỤNG PAGINATED LIST */}
+          {loading ? (
+             <tbody className="divide-y divide-gray-50"><tr><td colSpan="4" className="p-20 text-center animate-pulse font-black text-gray-300 uppercase">Đang nạp dữ liệu...</td></tr></tbody>
+          ) : toppings.length === 0 ? (
+             <tbody className="divide-y divide-gray-50"><tr><td colSpan="4" className="p-20 text-center font-black text-gray-300 uppercase">Chưa có topping nào</td></tr></tbody>
+          ) : (
+            <PaginatedList 
+              data={toppings} 
+              itemsPerPage={6} 
+              isTable={true}
+              listClassName="divide-y divide-gray-50"
+              renderItem={(item) => (
+                <tr key={item.id} className="hover:bg-blue-50/30 transition-all group">
+                  <td className="p-8">
+                     <div className="font-black text-gray-700 text-lg italic">{item.toppingName}</div>
+                     <div className="text-[10px] text-gray-300 font-bold uppercase mt-1">ID: #TOP-{item.id}</div>
+                  </td>
+                  <td className="p-8 text-center font-black text-blue-600 text-xl">+{item.price?.toLocaleString()}đ</td>
+                  <td className="p-8 text-center">
+                     <button 
+                      onClick={() => toggleStatus(item)}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${item.isActive ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' : 'bg-rose-100 text-rose-600 border border-rose-200'}`}
+                     >
+                       {item.isActive ? '✅ Đang Bán' : '❌ Ngừng Bán'}
+                     </button>
+                  </td>
+                  <td className="p-8 text-right space-x-3">
+                    <button onClick={() => { setEditingId(item.id); setFormData(item); setErrors({}); setIsModalOpen(true); }} className="bg-gray-100 text-gray-600 p-3 rounded-xl font-black text-[10px] uppercase hover:bg-blue-600 hover:text-white transition-all">Sửa</button>
+                    <button onClick={() => handleDelete(item.id)} className="bg-rose-50 text-rose-400 p-3 rounded-xl font-black text-[10px] uppercase hover:bg-rose-600 hover:text-white transition-all">Xóa</button>
+                  </td>
+                </tr>
+              )}
+            />
+          )}
         </table>
       </div>
 

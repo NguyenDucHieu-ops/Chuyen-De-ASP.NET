@@ -12,7 +12,8 @@ namespace NguyenDucHieu_2123110416.Models
 
         public int ProductId { get; set; }
         [ForeignKey("ProductId")] public Product? Product { get; set; }
-
+        // Thêm dòng này vào class Review
+        public string? AdminReply { get; set; }
         public int OrderId { get; set; } // Liên kết với đơn hàng để chứng minh đã mua
         [ForeignKey("OrderId")] public Order? Order { get; set; }
 

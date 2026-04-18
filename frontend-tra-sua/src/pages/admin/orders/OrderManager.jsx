@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import PaginatedList from '../../../components/PaginatedList'; 
 
 const OrderManager = () => {
   const [orders, setOrders] = useState([]);
@@ -44,7 +45,6 @@ const OrderManager = () => {
   };
 
   const getStatusBadge = (status) => {
-    // Ép kiểu về string và trim khoảng trắng để so sánh chuẩn nhất
     const s = String(status || "").trim();
     const configs = {
       "0": { label: "Chờ Duyệt", class: "bg-amber-100 text-amber-700 border-amber-200" },
@@ -64,35 +64,48 @@ const OrderManager = () => {
         <button onClick={fetchOrders} className="p-4 bg-gray-50 rounded-2xl hover:bg-blue-50 transition-all">🔄 Làm mới</button>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] shadow-sm overflow-hidden border border-gray-100">
+      <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 relative">
         <table className="w-full text-left">
           <thead className="bg-gray-50/50 border-b border-gray-100 font-black text-[10px] text-gray-400 uppercase tracking-widest">
             <tr>
               <th className="p-6">Mã Đơn</th>
-              <th className="p-6">Khách Hàng</th>
+              <th className="p-6">Khách & Món Đặt</th> {/* 💡 CẬP NHẬT HEADER */}
               <th className="p-6 text-center">Tổng Tiền</th>
               <th className="p-6 text-center">Trạng Thái</th>
               <th className="p-6 text-right">Thao Tác</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
-            {loading ? (
-              <tr><td colSpan="5" className="p-24 text-center animate-pulse font-black text-gray-300 uppercase italic">Đang lấy dữ liệu đơn hàng...</td></tr>
-            ) : orders.map(order => (
-              <tr key={order.id} className="hover:bg-blue-50/30 transition-all">
-                <td className="p-6 font-black text-gray-800">#ORD-{order.id}</td>
-                <td className="p-6">
-                   <div className="font-black text-gray-700">{order.customerName}</div>
-                   <div className="text-[10px] text-gray-400 font-bold uppercase">{order.phone}</div>
-                </td>
-                <td className="p-6 text-center font-black text-blue-600">{(order.totalAmount || 0).toLocaleString()}đ</td>
-                <td className="p-6 text-center">{getStatusBadge(order.status)}</td>
-                <td className="p-6 text-right">
-                  <button onClick={() => openOrderDetails(order.id)} className="bg-gray-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-blue-600 transition-all active:scale-95">Xử lý ngay</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          
+          {loading ? (
+             <tbody className="divide-y divide-gray-50"><tr><td colSpan="5" className="p-24 text-center animate-pulse font-black text-gray-300 uppercase italic">Đang lấy dữ liệu đơn hàng...</td></tr></tbody>
+          ) : orders.length === 0 ? (
+             <tbody className="divide-y divide-gray-50"><tr><td colSpan="5" className="p-24 text-center font-black text-gray-300 uppercase italic">Chưa có đơn hàng nào</td></tr></tbody>
+          ) : (
+            <PaginatedList 
+              data={orders} 
+              itemsPerPage={8} 
+              isTable={true}
+              listClassName="divide-y divide-gray-50"
+              renderItem={(order) => (
+                <tr key={order.id} className="hover:bg-blue-50/30 transition-all">
+                  <td className="p-6 font-black text-gray-800">#ORD-{order.id}</td>
+                  <td className="p-6 max-w-[300px]">
+                     <div className="font-black text-gray-700 uppercase text-xs">{order.customerName}</div>
+                     {/* 💡 HIỂN THỊ DANH SÁCH MÓN NGAY TẠI ĐÂY */}
+                     <div className="text-[11px] text-indigo-600 font-bold italic mt-1 leading-relaxed line-clamp-2">
+                        {order.productSummary || "Không có dữ liệu món"}
+                     </div>
+                     <div className="text-[9px] text-gray-400 font-bold mt-1 tracking-widest">{order.phone}</div>
+                  </td>
+                  <td className="p-6 text-center font-black text-blue-600">{(order.totalAmount || 0).toLocaleString()}đ</td>
+                  <td className="p-6 text-center">{getStatusBadge(order.status)}</td>
+                  <td className="p-6 text-right">
+                    <button onClick={() => openOrderDetails(order.id)} className="bg-gray-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-blue-600 transition-all active:scale-95">Xử lý ngay</button>
+                  </td>
+                </tr>
+              )}
+            />
+          )}
         </table>
       </div>
 
@@ -129,7 +142,6 @@ const OrderManager = () => {
                <button onClick={() => setIsDetailModalOpen(false)} className="px-10 py-5 bg-gray-100 text-gray-500 rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">Quay lại</button>
                
                <div className="flex-1 flex gap-3">
-                 {/* FIX LOGIC HIỆN NÚT: Chấp nhận cả số lẫn chuỗi, nếu status lạ thì vẫn hiện cho Admin xử lý */}
                  {(String(selectedOrder.status) === "0" || !["1","2","3"].includes(String(selectedOrder.status))) && (
                    <button 
                     disabled={isUpdating}
@@ -150,7 +162,6 @@ const OrderManager = () => {
                    </button>
                  )}
 
-                 {/* Luôn cho nút Hủy hiện ra nếu đơn chưa Thành công/Đã hủy */}
                  {String(selectedOrder.status) !== "2" && String(selectedOrder.status) !== "3" && (
                    <button 
                     disabled={isUpdating}

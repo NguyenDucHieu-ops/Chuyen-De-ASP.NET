@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NguyenDucHieu_2123110416.Data;
 
@@ -11,9 +12,11 @@ using NguyenDucHieu_2123110416.Data;
 namespace NguyenDucHieu_2123110416.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260418005035_AddVoucherPoints")]
+    partial class AddVoucherPoints
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -166,7 +169,7 @@ namespace NguyenDucHieu_2123110416.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             ImageUrl = "banner_he.jpg",
                             IsActive = true,
                             IsDeleted = false,
@@ -225,7 +228,7 @@ namespace NguyenDucHieu_2123110416.Migrations
                         {
                             Id = 1,
                             CategoryName = "Trà Sữa",
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             ImageUrl = "trasua_thumb.jpg",
                             IsActive = true,
                             IsDeleted = false
@@ -234,7 +237,7 @@ namespace NguyenDucHieu_2123110416.Migrations
                         {
                             Id = 2,
                             CategoryName = "Cà Phê",
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             ImageUrl = "caphe_thumb.jpg",
                             IsActive = true,
                             IsDeleted = false
@@ -243,7 +246,7 @@ namespace NguyenDucHieu_2123110416.Migrations
                         {
                             Id = 3,
                             CategoryName = "Đồ Ăn Vặt",
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             ImageUrl = "snack_thumb.jpg",
                             IsActive = true,
                             IsDeleted = false
@@ -609,7 +612,7 @@ namespace NguyenDucHieu_2123110416.Migrations
                             Id = 1,
                             BasePrice = 35000m,
                             CategoryId = 1,
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             Description = "Vị ngọt thanh, đậm đà",
                             HasOptions = true,
                             ImageUrl = "trasua_duongden.jpg",
@@ -624,7 +627,7 @@ namespace NguyenDucHieu_2123110416.Migrations
                             Id = 2,
                             BasePrice = 29000m,
                             CategoryId = 2,
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             Description = "Đặc sản xứ Huế",
                             HasOptions = true,
                             ImageUrl = "caphe_muoi.jpg",
@@ -639,7 +642,7 @@ namespace NguyenDucHieu_2123110416.Migrations
                             Id = 3,
                             BasePrice = 20000m,
                             CategoryId = 3,
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             Description = "Chua cay mặn ngọt đủ vị",
                             HasOptions = false,
                             ImageUrl = "banh_trang.jpg",
@@ -658,9 +661,6 @@ namespace NguyenDucHieu_2123110416.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AdminReply")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Comment")
                         .IsRequired()
@@ -783,7 +783,7 @@ namespace NguyenDucHieu_2123110416.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             Description = "",
                             IsActive = true,
                             IsDeleted = false,
@@ -792,7 +792,7 @@ namespace NguyenDucHieu_2123110416.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             Description = "",
                             IsActive = true,
                             IsDeleted = false,
@@ -848,7 +848,7 @@ namespace NguyenDucHieu_2123110416.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             IsActive = true,
                             IsDeleted = false,
                             Price = 5000m,
@@ -857,7 +857,7 @@ namespace NguyenDucHieu_2123110416.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             IsActive = true,
                             IsDeleted = false,
                             Price = 5000m,
@@ -866,7 +866,7 @@ namespace NguyenDucHieu_2123110416.Migrations
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             IsActive = true,
                             IsDeleted = false,
                             Price = 10000m,
@@ -1020,10 +1020,10 @@ namespace NguyenDucHieu_2123110416.Migrations
                         {
                             Id = 1,
                             Code = "HIEUVIP",
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             Description = "",
                             DiscountAmount = 15000m,
-                            ExpiryDate = new DateTime(2026, 5, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            ExpiryDate = new DateTime(2026, 5, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             IsActive = true,
                             IsDeleted = false,
                             PointsRequired = 0
@@ -1032,10 +1032,10 @@ namespace NguyenDucHieu_2123110416.Migrations
                         {
                             Id = 2,
                             Code = "FREESHIP",
-                            CreatedAt = new DateTime(2026, 4, 18, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            CreatedAt = new DateTime(2026, 4, 18, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             Description = "",
                             DiscountAmount = 10000m,
-                            ExpiryDate = new DateTime(2026, 5, 3, 12, 33, 49, 972, DateTimeKind.Local).AddTicks(2336),
+                            ExpiryDate = new DateTime(2026, 5, 3, 7, 50, 32, 702, DateTimeKind.Local).AddTicks(392),
                             IsActive = true,
                             IsDeleted = false,
                             PointsRequired = 0

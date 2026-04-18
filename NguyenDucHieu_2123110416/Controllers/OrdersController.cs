@@ -34,6 +34,7 @@ namespace NguyenDucHieu_2123110416.Controllers
             {
                 var orders = await _context.Orders
                     .Include(o => o.User)
+                    .Include(o => o.OrderDetails).ThenInclude(od => od.Product) // 💡 Join thêm để lấy tên món
                     .OrderByDescending(o => o.CreatedAt)
                     .Select(o => new {
                         id = o.Id,
@@ -41,7 +42,9 @@ namespace NguyenDucHieu_2123110416.Controllers
                         phone = o.User.PhoneNumber,
                         totalAmount = o.FinalAmount,
                         status = o.OrderStatus,
-                        createdAt = o.CreatedAt
+                        createdAt = o.CreatedAt,
+                        // 💡 TẠO TÓM TẮT MÓN: "Trà sữa (x2), Cà phê (x1)..."
+                        productSummary = string.Join(", ", o.OrderDetails.Select(od => od.Product.ProductName + " (x" + od.Quantity + ")"))
                     })
                     .ToListAsync();
 
@@ -95,20 +98,51 @@ namespace NguyenDucHieu_2123110416.Controllers
         // ====================================================
         [HttpPut("{id}/status")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateStatus(int id, [FromBody] int status)
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status)
         {
             try
             {
                 var adminIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrEmpty(adminIdString)) return Unauthorized();
 
-                await _orderService.UpdateOrderStatusAsync(id, status);
+                // Cập nhật trạng thái thông qua Service
+                await _orderService.UpdateOrderStatusAsync(id, int.Parse(status));
 
                 var order = await _context.Orders.FindAsync(id);
                 if (order != null)
                 {
                     order.UpdatedBy = int.Parse(adminIdString);
                     order.UpdatedAt = DateTime.Now;
+
+                    // 💡 TÍNH NĂNG MỚI: CỘNG ĐIỂM KHI ĐƠN HOÀN THÀNH
+                    // 💡 Sửa lỗi: Bắt số "2" (Thành công trong DB của sếp)
+                    if (status == "2" || order.OrderStatus.ToString() == "2" || order.OrderStatus.ToString() == "Completed")
+                    {
+                        // Kiểm tra xem đơn này đã được cộng điểm trước đó chưa để tránh cộng đúp
+                        bool alreadyRewarded = await _context.PointTransactions
+                            .AnyAsync(pt => pt.OrderId == id);
+
+                        if (!alreadyRewarded)
+                        {
+                            // 💡 Quy đổi: 10.000đ = 1 Điểm
+                            int pointsEarned = (int)(order.FinalAmount / 10000);
+
+                            if (pointsEarned > 0)
+                            {
+                                var pointTransaction = new PointTransaction
+                                {
+                                    UserId = order.UserId,
+                                    OrderId = order.Id,
+                                    Points = pointsEarned,
+                                    Description = $"Tích điểm đơn hàng #HIEU-{order.Id}",
+                                    CreatedAt = DateTime.Now,
+                                    CreatedBy = int.Parse(adminIdString)
+                                };
+                                _context.PointTransactions.Add(pointTransaction);
+                            }
+                        }
+                    }
+
                     await _context.SaveChangesAsync();
                 }
 

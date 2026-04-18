@@ -12,7 +12,7 @@ import ContactPage from './pages/client/contact/ContactPage';
 import PaymentResult from './pages/client/cart/PaymentResult'; 
 import ArticlesPage from './pages/client/articles/ArticlesPage';
 import ArticleDetailPage from './pages/client/articles/ArticleDetailPage';
-
+import AllReviewsPage from './pages/client/AllReviewsPage';
 // Auth & Admin
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -52,6 +52,7 @@ function App() {
           <Route path="payment-result" element={<PaymentResult />} /> 
           <Route path="articles" element={<ArticlesPage />} /> 
           <Route path="article/:id" element={<ArticleDetailPage />} /> 
+          <Route path="/reviews" element={<AllReviewsPage />} />
         </Route>
         
         {/* ADMIN ROUTES */}

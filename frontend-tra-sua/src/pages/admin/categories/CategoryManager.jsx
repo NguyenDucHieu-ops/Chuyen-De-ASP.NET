@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import PaginatedList from '../../../components/PaginatedList'; // 💡 IMPORT PHÂN TRANG
 
 const CategoryManager = () => {
   const [dataList, setDataList] = useState([]);
@@ -110,7 +111,7 @@ const CategoryManager = () => {
         >+ THÊM MỚI</button>
       </div>
 
-      <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-gray-100">
+      <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 relative">
         <table className="w-full text-left">
           <thead className="bg-gray-50 border-b border-gray-100 text-[10px] text-gray-400 font-black uppercase tracking-widest">
             <tr>
@@ -119,33 +120,43 @@ const CategoryManager = () => {
               <th className="p-6 text-right">Thao Tác</th>
             </tr>
           </thead>
-          <tbody>
-            {loading ? <tr><td colSpan="3" className="p-10 text-center animate-pulse text-gray-400 font-black uppercase italic">Đang đồng bộ SQL Server...</td></tr> : 
-            dataList.map(item => (
-              <tr key={item.id} className={`border-b border-gray-50 hover:bg-blue-50/30 transition-all ${!item.isActive ? 'opacity-50' : ''}`}>
-                <td className="p-6 font-black text-gray-700 uppercase tracking-tighter text-lg">{item.categoryName}</td>
-                <td className="p-6 text-center">
-                  <button 
-                    onClick={() => handleToggleStatus(item)}
-                    className={`px-4 py-2 rounded-full text-[9px] font-black uppercase transition-all ${item.isActive ? 'bg-green-100 text-green-600 border border-green-200' : 'bg-red-100 text-red-600 border border-red-200'}`}
-                  >
-                    {item.isActive ? '● Hiển Thị' : '○ Đang Ẩn'}
-                  </button>
-                </td>
-                <td className="p-6 text-right space-x-3">
-                   <button onClick={() => { setSelectedCat(item); setIsDetailOpen(true); }} className="text-gray-400 font-bold hover:text-blue-600 uppercase text-xs">Chi tiết</button>
-                   <button onClick={() => openEditModal(item)} className="p-2 text-blue-600 font-black underline uppercase text-xs">Sửa</button>
-                   <button onClick={() => handleDelete(item.id)} className="p-2 text-red-500 font-bold uppercase text-xs">Xóa</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          
+          {/* 💡 SỬ DỤNG PAGINATED LIST */}
+          {loading ? (
+             <tbody><tr><td colSpan="3" className="p-10 text-center animate-pulse text-gray-400 font-black uppercase italic">Đang đồng bộ SQL Server...</td></tr></tbody>
+          ) : dataList.length === 0 ? (
+             <tbody><tr><td colSpan="3" className="p-10 text-center text-gray-400 font-black uppercase italic">Chưa có dữ liệu</td></tr></tbody>
+          ) : (
+            <PaginatedList 
+              data={dataList} 
+              itemsPerPage={6} 
+              isTable={true}
+              renderItem={(item) => (
+                <tr key={item.id} className={`border-b border-gray-50 hover:bg-blue-50/30 transition-all ${!item.isActive ? 'opacity-50' : ''}`}>
+                  <td className="p-6 font-black text-gray-700 uppercase tracking-tighter text-lg">{item.categoryName}</td>
+                  <td className="p-6 text-center">
+                    <button 
+                      onClick={() => handleToggleStatus(item)}
+                      className={`px-4 py-2 rounded-full text-[9px] font-black uppercase transition-all ${item.isActive ? 'bg-green-100 text-green-600 border border-green-200' : 'bg-red-100 text-red-600 border border-red-200'}`}
+                    >
+                      {item.isActive ? '● Hiển Thị' : '○ Đang Ẩn'}
+                    </button>
+                  </td>
+                  <td className="p-6 text-right space-x-3">
+                    <button onClick={() => { setSelectedCat(item); setIsDetailOpen(true); }} className="text-gray-400 font-bold hover:text-blue-600 uppercase text-xs">Chi tiết</button>
+                    <button onClick={() => openEditModal(item)} className="p-2 text-blue-600 font-black underline uppercase text-xs">Sửa</button>
+                    <button onClick={() => handleDelete(item.id)} className="p-2 text-red-500 font-bold uppercase text-xs">Xóa</button>
+                  </td>
+                </tr>
+              )}
+            />
+          )}
         </table>
       </div>
 
       {isDetailOpen && selectedCat && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-[2.5rem] p-10 w-full max-w-md shadow-2xl text-center relative">
+          <div className="bg-white rounded-[2.5rem] p-10 w-full max-w-md shadow-2xl text-center relative animate-fadeIn">
             <button onClick={() => setIsDetailOpen(false)} className="absolute top-6 right-6 text-2xl font-black text-gray-300 hover:text-gray-800">×</button>
             <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 shadow-inner">📂</div>
             <h2 className="text-3xl font-black text-gray-800 uppercase tracking-tighter italic">{selectedCat.categoryName}</h2>
