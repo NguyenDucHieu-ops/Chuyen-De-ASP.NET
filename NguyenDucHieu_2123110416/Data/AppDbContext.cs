@@ -40,6 +40,10 @@ namespace NguyenDucHieu_2123110416.Data
         public DbSet<ReviewImage> ReviewImages { get; set; }
         public DbSet<Banner> Banners { get; set; }
         public DbSet<Article> Articles { get; set; }
+
+        // 💡 ĐÃ THÊM BẢNG NOTIFICATION ĐỂ LƯU THÔNG BÁO QUẢ CHUÔNG
+        public DbSet<Notification> Notifications { get; set; }
+
         // 👇 BẢNG LƯU NHẬT KÝ HỆ THỐNG
         public DbSet<ActivityLog> ActivityLogs { get; set; }
 

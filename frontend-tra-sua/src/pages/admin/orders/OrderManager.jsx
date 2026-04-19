@@ -26,10 +26,10 @@ const OrderManager = () => {
   const updateOrderStatus = async (id, newStatus) => {
     setIsUpdating(true);
     try {
-      await axios.put(`${import.meta.env.VITE_API_URL}/api/Orders/${id}/status`, newStatus, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/Orders/${id}/status`, { status: newStatus.toString() }, {
          headers: { ...headers, 'Content-Type': 'application/json' }
       });
-      alert(newStatus === 2 ? "🎉 Đơn hoàn thành & Đã cộng điểm cho khách!" : "⚡ Đã cập nhật trạng thái!");
+      alert(newStatus === 2 ? "🎉 Đơn hoàn thành & Đã cộng điểm cho khách!" : newStatus === 3 ? "❌ Đã hủy đơn hàng!" : "⚡ Đã cập nhật trạng thái!");
       await fetchOrders(); 
       setIsDetailModalOpen(false);
     } catch { alert("❌ Lỗi xử lý đơn hàng!"); }
@@ -61,7 +61,7 @@ const OrderManager = () => {
     <div className="space-y-6 animate-[fadeIn_0.5s_ease-out]">
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex justify-between items-center">
         <h1 className="text-3xl font-black text-gray-800 uppercase italic">Quản Lý <span className="text-blue-600">Đơn Hàng</span></h1>
-        <button onClick={fetchOrders} className="p-4 bg-gray-50 rounded-2xl hover:bg-blue-50 transition-all">🔄 Làm mới</button>
+        <button onClick={fetchOrders} className="p-4 bg-gray-50 rounded-2xl hover:bg-blue-50 transition-all font-black text-xs uppercase text-gray-500">🔄 Làm mới</button>
       </div>
 
       <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 relative">
@@ -69,7 +69,8 @@ const OrderManager = () => {
           <thead className="bg-gray-50/50 border-b border-gray-100 font-black text-[10px] text-gray-400 uppercase tracking-widest">
             <tr>
               <th className="p-6">Mã Đơn</th>
-              <th className="p-6">Khách & Món Đặt</th> {/* 💡 CẬP NHẬT HEADER */}
+              <th className="p-6">Khách & Liên Hệ</th> 
+              <th className="p-6">Món Đặt</th>
               <th className="p-6 text-center">Tổng Tiền</th>
               <th className="p-6 text-center">Trạng Thái</th>
               <th className="p-6 text-right">Thao Tác</th>
@@ -77,9 +78,9 @@ const OrderManager = () => {
           </thead>
           
           {loading ? (
-             <tbody className="divide-y divide-gray-50"><tr><td colSpan="5" className="p-24 text-center animate-pulse font-black text-gray-300 uppercase italic">Đang lấy dữ liệu đơn hàng...</td></tr></tbody>
+             <tbody className="divide-y divide-gray-50"><tr><td colSpan="6" className="p-24 text-center animate-pulse font-black text-gray-300 uppercase italic">Đang lấy dữ liệu đơn hàng...</td></tr></tbody>
           ) : orders.length === 0 ? (
-             <tbody className="divide-y divide-gray-50"><tr><td colSpan="5" className="p-24 text-center font-black text-gray-300 uppercase italic">Chưa có đơn hàng nào</td></tr></tbody>
+             <tbody className="divide-y divide-gray-50"><tr><td colSpan="6" className="p-24 text-center font-black text-gray-300 uppercase italic">Chưa có đơn hàng nào</td></tr></tbody>
           ) : (
             <PaginatedList 
               data={orders} 
@@ -89,14 +90,18 @@ const OrderManager = () => {
               renderItem={(order) => (
                 <tr key={order.id} className="hover:bg-blue-50/30 transition-all">
                   <td className="p-6 font-black text-gray-800">#ORD-{order.id}</td>
-                  <td className="p-6 max-w-[300px]">
+                  
+                  <td className="p-6">
                      <div className="font-black text-gray-700 uppercase text-xs">{order.customerName}</div>
-                     {/* 💡 HIỂN THỊ DANH SÁCH MÓN NGAY TẠI ĐÂY */}
-                     <div className="text-[11px] text-indigo-600 font-bold italic mt-1 leading-relaxed line-clamp-2">
+                     <div className="text-[10px] text-gray-500 font-bold mt-1 bg-gray-100 px-2 py-1 rounded w-fit tracking-widest">📞 {order.phone}</div>
+                  </td>
+
+                  <td className="p-6 max-w-[250px]">
+                     <div className="text-[11px] text-indigo-600 font-bold italic leading-relaxed line-clamp-2">
                         {order.productSummary || "Không có dữ liệu món"}
                      </div>
-                     <div className="text-[9px] text-gray-400 font-bold mt-1 tracking-widest">{order.phone}</div>
                   </td>
+
                   <td className="p-6 text-center font-black text-blue-600">{(order.totalAmount || 0).toLocaleString()}đ</td>
                   <td className="p-6 text-center">{getStatusBadge(order.status)}</td>
                   <td className="p-6 text-right">
@@ -110,7 +115,7 @@ const OrderManager = () => {
       </div>
 
       {isDetailModalOpen && selectedOrder && (
-        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-[3rem] p-10 w-full max-w-3xl shadow-2xl animate-[zoomIn_0.3s_ease-out]">
             <div className="flex justify-between items-start border-b pb-6 mb-8">
                <h2 className="text-3xl font-black italic uppercase tracking-tighter text-gray-800">Chi tiết Đơn #{selectedOrder.id}</h2>
@@ -119,9 +124,12 @@ const OrderManager = () => {
 
             <div className="grid grid-cols-2 gap-8 mb-8">
                <div className="bg-gray-50 p-6 rounded-[2rem]">
-                 <p className="text-[10px] font-black text-gray-400 mb-1 uppercase">Người nhận</p>
+                 <p className="text-[10px] font-black text-gray-400 mb-1 uppercase tracking-widest">Người nhận</p>
                  <p className="font-black text-xl text-gray-800">{selectedOrder.customerName}</p>
-                 <p className="text-sm font-bold text-gray-500 italic mt-1 leading-relaxed">📍 {selectedOrder.address}</p>
+                 <p className="text-xs font-bold text-gray-500 mt-1 uppercase tracking-widest">📞 {selectedOrder.phone}</p>
+                 <p className="text-xs font-bold text-indigo-600 italic mt-3 leading-relaxed border-t border-gray-200 pt-3">
+                    📍 {selectedOrder.address || "Giao hàng tận nơi"}
+                 </p>
                </div>
                <div className="bg-blue-600 p-8 rounded-[2rem] text-white shadow-xl shadow-blue-100 flex flex-col justify-center">
                  <p className="text-[10px] font-black text-blue-200 mb-1 uppercase tracking-widest">Tổng tiền thanh toán</p>
@@ -146,7 +154,7 @@ const OrderManager = () => {
                    <button 
                     disabled={isUpdating}
                     onClick={() => updateOrderStatus(selectedOrder.id, 1)} 
-                    className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase shadow-xl hover:bg-blue-700 transition-all disabled:opacity-50"
+                    className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all disabled:opacity-50"
                    >
                      {isUpdating ? '...' : '✅ Nhận Đơn'}
                    </button>
@@ -156,7 +164,7 @@ const OrderManager = () => {
                    <button 
                     disabled={isUpdating}
                     onClick={() => updateOrderStatus(selectedOrder.id, 2)} 
-                    className="flex-1 py-5 bg-emerald-500 text-white rounded-[1.5rem] font-black uppercase shadow-xl hover:bg-emerald-600 transition-all disabled:opacity-50"
+                    className="flex-1 py-5 bg-emerald-500 text-white rounded-[1.5rem] font-black uppercase shadow-xl shadow-emerald-100 hover:bg-emerald-600 transition-all disabled:opacity-50"
                    >
                      {isUpdating ? '...' : '🥤 Hoàn Thành'}
                    </button>
@@ -165,7 +173,11 @@ const OrderManager = () => {
                  {String(selectedOrder.status) !== "2" && String(selectedOrder.status) !== "3" && (
                    <button 
                     disabled={isUpdating}
-                    onClick={() => updateOrderStatus(selectedOrder.id, 3)} 
+                    onClick={() => {
+                        if(window.confirm("Xác nhận hủy đơn hàng này?")) {
+                            updateOrderStatus(selectedOrder.id, 3);
+                        }
+                    }} 
                     className="px-8 py-5 bg-rose-50 text-rose-600 rounded-[1.5rem] font-black uppercase hover:bg-rose-100 transition-all disabled:opacity-50"
                    >
                      ❌ Hủy

@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NguyenDucHieu_2123110416.Data;
 using NguyenDucHieu_2123110416.Services;
+using NguyenDucHieu_2123110416.Hubs; // 💡 ĐÃ BỎ COMMENT ĐỂ NHẬN DIỆN HUB THÔNG BÁO
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -20,6 +21,12 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// 💡 ĐÃ BỎ COMMENT ĐỂ KHAI BÁO EMAIL SERVICE 
+builder.Services.AddScoped<IEmailService, EmailService>();
+
+// 💡 ĐĂNG KÝ SIGNALR CHO THÔNG BÁO REAL-TIME
+builder.Services.AddSignalR();
+
 // ====================================================================
 // 2. MỞ CỬA CORS CHO FRONTEND (Đặt trước builder.Build)
 // ====================================================================
@@ -28,13 +35,14 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowHieuStore",
         policy =>
         {
-            // Cho phép mọi nguồn, mọi phương thức, mọi Header để làm đồ án cho sướng
-            policy.AllowAnyOrigin()
+            // 💡 FIX LỖI SIGNALR: Thay vì AllowAnyOrigin() (cấm dùng chung với Credentials)
+            // Sếp phải chỉ định đúng cái link Frontend React của sếp vào đây
+            policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
                   .AllowAnyMethod()
-                  .AllowAnyHeader();
+                  .AllowAnyHeader()
+                  .AllowCredentials(); // 💡 QUAN TRỌNG NHẤT: Cho phép SignalR gửi token qua
         });
 });
-
 // ====================================================================
 // 3. CẤU HÌNH BẢO MẬT JWT TOKEN
 // ====================================================================
@@ -113,5 +121,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// 💡 ĐÃ BỎ COMMENT ĐỂ ĐỊNH TUYẾN TỚI HUB THÔNG BÁO 
+app.MapHub<NotificationHub>("/notificationHub");
 
 app.Run();

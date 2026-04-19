@@ -1,11 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
 using NguyenDucHieu_2123110416.Data;
-using NguyenDucHieu_2123110416.DTOs;
 using NguyenDucHieu_2123110416.Models;
 using NguyenDucHieu_2123110416.Services;
+using NguyenDucHieu_2123110416.Hubs;
 using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 
 namespace NguyenDucHieu_2123110416.Controllers
 {
@@ -16,16 +18,57 @@ namespace NguyenDucHieu_2123110416.Controllers
     {
         private readonly IOrderService _orderService;
         private readonly AppDbContext _context;
+        private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly IEmailService _emailService;
 
-        public OrdersController(IOrderService orderService, AppDbContext context)
+        public OrdersController(
+            IOrderService orderService,
+            AppDbContext context,
+            IHubContext<NotificationHub> hubContext,
+            IEmailService emailService)
         {
             _orderService = orderService;
             _context = context;
+            _hubContext = hubContext;
+            _emailService = emailService;
         }
 
-        // ====================================================
-        // 1. ADMIN: LẤY TOÀN BỘ ĐƠN HÀNG 
-        // ====================================================
+        // ====================================================================
+        // 💡 HÀM TIỆN ÍCH: GỬI THÔNG BÁO (LƯU DB + BẮN SIGNALR + GỬI MAIL)
+        // ====================================================================
+        private async Task SendPrivateNotification(int targetUserId, string title, string message, string type, string link, string? email = null)
+        {
+            var notif = new Notification
+            {
+                UserId = targetUserId,
+                Title = title,
+                Message = message,
+                Type = type,
+                LinkUrl = link,
+                IsRead = false,
+                CreatedAt = DateTime.Now
+            };
+            _context.Notifications.Add(notif);
+            await _context.SaveChangesAsync();
+
+            await _hubContext.Clients.All.SendAsync("ReceiveNotification", new
+            {
+                userId = targetUserId, // Gửi kèm UserId để Frontend lọc "chính chủ"
+                id = notif.Id,
+                title = notif.Title,
+                message = notif.Message,
+                type = notif.Type,
+                linkUrl = notif.LinkUrl,
+                createdAt = notif.CreatedAt
+            });
+
+            if (!string.IsNullOrEmpty(email))
+            {
+                string emailBody = $"<h3>{title}</h3><p>{message}</p><hr/><p>Cảm ơn sếp đã tin dùng HieuStore!</p>";
+                _ = _emailService.SendEmailAsync(email, title, emailBody);
+            }
+        }
+
         [HttpGet]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllOrders()
@@ -46,15 +89,11 @@ namespace NguyenDucHieu_2123110416.Controllers
                         productSummary = string.Join(", ", o.OrderDetails.Select(od => od.Product.ProductName + " (x" + od.Quantity + ")"))
                     })
                     .ToListAsync();
-
                 return Ok(orders);
             }
             catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
         }
 
-        // ====================================================
-        // 2. ADMIN: XEM CHI TIẾT ĐƠN HÀNG 
-        // ====================================================
         [HttpGet("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetOrderDetail(int id)
@@ -74,7 +113,7 @@ namespace NguyenDucHieu_2123110416.Controllers
                     id = order.Id,
                     customerName = order.User != null ? order.User.FullName : "Khách ẩn danh",
                     phone = order.User != null ? order.User.PhoneNumber : "",
-                    address = "Giao hàng tận nơi",
+                    address = order.OrderNote,
                     totalAmount = order.FinalAmount,
                     status = order.OrderStatus,
                     createdAt = order.CreatedAt,
@@ -87,41 +126,41 @@ namespace NguyenDucHieu_2123110416.Controllers
                         toppingNames = string.Join(", ", od.OrderDetailToppings.Select(t => t.Topping.ToppingName))
                     })
                 };
-
                 return Ok(result);
             }
             catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
         }
 
-        // ====================================================
-        // 3. ADMIN: CẬP NHẬT TRẠNG THÁI (CỘNG ĐIỂM KHI XONG)
-        // ====================================================
         [HttpPut("{id}/status")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status)
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateOrderStatusDTO request)
         {
             try
             {
                 var adminIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrEmpty(adminIdString)) return Unauthorized();
 
+                string status = request.Status;
                 await _orderService.UpdateOrderStatusAsync(id, int.Parse(status));
 
-                var order = await _context.Orders.FindAsync(id);
+                // 💡 LOAD KÈM PRODUCT NAME ĐỂ HIỆN TRONG THÔNG BÁO
+                var order = await _context.Orders
+                    .Include(o => o.User)
+                    .Include(o => o.OrderDetails).ThenInclude(od => od.Product)
+                    .FirstOrDefaultAsync(o => o.Id == id);
+
                 if (order != null)
                 {
                     order.UpdatedBy = int.Parse(adminIdString);
                     order.UpdatedAt = DateTime.Now;
 
-                    // Nếu đơn hàng thành công (Status 2) -> Cộng điểm cho khách
-                    if (status == "2" || order.OrderStatus.ToString() == "2" || order.OrderStatus.ToString() == "Completed")
+                    if (status == "2" || order.OrderStatus.ToString() == "2")
                     {
-                        bool alreadyRewarded = await _context.PointTransactions.AnyAsync(pt => pt.OrderId == id && pt.Points > 0);
-                        if (!alreadyRewarded)
+                        int pointsEarned = (int)(order.FinalAmount / 10000);
+                        if (pointsEarned > 0)
                         {
-                            // Tỷ lệ: 10.000đ = 1 Điểm
-                            int pointsEarned = (int)(order.FinalAmount / 10000);
-                            if (pointsEarned > 0)
+                            bool alreadyRewarded = await _context.PointTransactions.AnyAsync(pt => pt.OrderId == id && pt.Points > 0);
+                            if (!alreadyRewarded)
                             {
                                 _context.PointTransactions.Add(new PointTransaction
                                 {
@@ -136,15 +175,25 @@ namespace NguyenDucHieu_2123110416.Controllers
                         }
                     }
                     await _context.SaveChangesAsync();
+
+                    // 💡 TỔNG HỢP DANH SÁCH MÓN
+                    string items = string.Join(", ", order.OrderDetails.Select(od => od.Product.ProductName + " (x" + od.Quantity + ")"));
+
+                    string msg = status switch
+                    {
+                        "1" => $"Đơn hàng #HIEU-{id} [{items}] đã được quán xác nhận!",
+                        "2" => $"Đơn hàng #HIEU-{id} [{items}] đã hoàn thành. Chúc sếp ngon miệng!",
+                        "3" => $"Đơn hàng #HIEU-{id} [{items}] đã bị hủy.",
+                        _ => $"Đơn hàng #HIEU-{id} có cập nhật mới."
+                    };
+
+                    await SendPrivateNotification(order.UserId, "Cập nhật đơn hàng 🥤", msg, "ORDER_UPDATE", "/profile", order.User?.Email);
                 }
-                return Ok(new { message = "Cập nhật trạng thái thành công!" });
+                return Ok(new { message = "Cập nhật thành công!" });
             }
             catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
         }
 
-        // ====================================================
-        // 4. KHÁCH HÀNG: ĐẶT HÀNG (TRỪ ĐIỂM GIẢM TIỀN)
-        // ====================================================
         [HttpPost("checkout")]
         public async Task<IActionResult> Checkout([FromBody] OrderRequestDTO request)
         {
@@ -154,19 +203,6 @@ namespace NguyenDucHieu_2123110416.Controllers
                 if (string.IsNullOrEmpty(userIdString)) return Unauthorized(new { error = "Hết hạn đăng nhập!" });
 
                 int currentUserId = int.Parse(userIdString);
-
-                // 💡 Kiểm tra điểm khách đang có nếu khách yêu cầu dùng điểm
-                if (request.UsedPoints > 0)
-                {
-                    var userPoints = await _context.PointTransactions
-                        .Where(pt => pt.UserId == currentUserId && pt.IsDeleted == false)
-                        .SumAsync(pt => pt.Points);
-
-                    if (userPoints < request.UsedPoints)
-                        return BadRequest(new { error = "Sếp không đủ điểm để thực hiện giao dịch này!" });
-                }
-
-                // Chuyển DTO sang danh sách OrderDetail
                 var orderDetails = request.Items.Select(item => new OrderDetail
                 {
                     ProductId = item.ProductId,
@@ -175,36 +211,27 @@ namespace NguyenDucHieu_2123110416.Controllers
                     OrderDetailToppings = item.ToppingIds.Select(id => new OrderDetailTopping { ToppingId = id }).ToList()
                 }).ToList();
 
-                // 💡 Gọi Service: Truyền thêm UsedPoints để tính giảm giá trong OrderService
-                var order = await _orderService.CreateOrderAsync(currentUserId, request.AddressId, request.VoucherCode, orderDetails, request.Note ?? string.Empty);
+                var order = await _orderService.CreateOrderAsync(currentUserId, request.AddressId, request.VoucherCode, orderDetails, request.Note ?? string.Empty, request.ShippingFee, request.UsedPoints);
 
-                // 💡 Nếu có dùng điểm -> Trừ trực tiếp vào bảng giao dịch (Số điểm âm)
-                if (request.UsedPoints > 0)
-                {
-                    // Giả sử 1 điểm = 1.000đ, ta trừ FinalAmount của đơn hàng ngay tại đây
-                    // (Hoặc sếp nên xử lý trừ FinalAmount bên trong CreateOrderAsync của IOrderService để chuẩn nhất)
+                // 💡 LOAD LẠI ĐƠN KÈM PRODUCT ĐỂ LẤY TÊN MÓN
+                var fullOrder = await _context.Orders
+                    .Include(o => o.OrderDetails).ThenInclude(od => od.Product)
+                    .Include(o => o.User)
+                    .FirstOrDefaultAsync(o => o.Id == order.Id);
 
-                    _context.PointTransactions.Add(new PointTransaction
-                    {
-                        UserId = currentUserId,
-                        OrderId = order.Id,
-                        Points = -request.UsedPoints, // 💡 SỐ ÂM ĐỂ TRỪ ĐIỂM
-                        Description = $"Sử dụng {request.UsedPoints} điểm cho đơn hàng #{order.Id}",
-                        CreatedAt = DateTime.Now,
-                        CreatedBy = currentUserId
-                    });
+                string items = string.Join(", ", fullOrder.OrderDetails.Select(od => od.Product.ProductName + " (x" + od.Quantity + ")"));
 
-                    await _context.SaveChangesAsync();
-                }
+                // 🚀 THÔNG BÁO ADMIN (ID = 1)
+                await SendPrivateNotification(1, "🔔 CÓ ĐƠN HÀNG MỚI!", $"Khách {fullOrder.User?.FullName} vừa đặt đơn #HIEU-{order.Id}: {items}", "NEW_ORDER", "/admin/orders");
+
+                // 🚀 THÔNG BÁO KHÁCH HÀNG
+                await SendPrivateNotification(currentUserId, "🎉 Đặt hàng thành công!", $"Đơn #HIEU-{order.Id} [{items}] đã gửi tới quán.", "CHECKOUT_SUCCESS", "/profile", fullOrder.User?.Email);
 
                 return Ok(new { message = "Đặt hàng thành công!", orderId = order.Id, finalAmount = order.FinalAmount });
             }
             catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
         }
 
-        // ====================================================
-        // 5. KHÁCH HÀNG: XEM LỊCH SỬ
-        // ====================================================
         [HttpGet("history")]
         public async Task<IActionResult> GetOrderHistory()
         {
@@ -230,7 +257,6 @@ namespace NguyenDucHieu_2123110416.Controllers
                         }).ToList()
                     })
                     .ToListAsync();
-
                 return Ok(orders);
             }
             catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
@@ -241,7 +267,8 @@ namespace NguyenDucHieu_2123110416.Controllers
     {
         public int AddressId { get; set; }
         public string? VoucherCode { get; set; }
-        public int UsedPoints { get; set; } // 💡 TRƯỜNG MỚI ĐỂ NHẬN ĐIỂM TỪ REACT
+        public int UsedPoints { get; set; }
+        public decimal ShippingFee { get; set; }
         public string? Note { get; set; }
         public List<OrderItemDTO> Items { get; set; } = new();
     }
@@ -252,5 +279,10 @@ namespace NguyenDucHieu_2123110416.Controllers
         public int Quantity { get; set; }
         public string Size { get; set; } = "M";
         public List<int> ToppingIds { get; set; } = new();
+    }
+
+    public class UpdateOrderStatusDTO
+    {
+        [Required] public string Status { get; set; } = null!;
     }
 }

@@ -14,9 +14,9 @@ namespace NguyenDucHieu_2123110416.Services
         }
 
         // ====================================================================
-        // HÀM TẠO ĐƠN HÀNG (DÀNH CHO KHÁCH)
+        // HÀM TẠO ĐƠN HÀNG (DÀNH CHO KHÁCH) - ĐÃ CẬP NHẬT TÍNH SHIP & ĐIỂM
         // ====================================================================
-        public async Task<Order> CreateOrderAsync(int userId, int addressId, string? voucherCode, List<OrderDetail> cartItems, string note)
+        public async Task<Order> CreateOrderAsync(int userId, int addressId, string? voucherCode, List<OrderDetail> cartItems, string note, decimal shippingFee, int usedPoints)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
@@ -24,21 +24,23 @@ namespace NguyenDucHieu_2123110416.Services
                 var user = await _context.Users.FindAsync(userId);
                 if (user == null || !user.IsActive) throw new Exception("Tài khoản không hợp lệ!");
 
-                var address = await _context.UserAddresses.FirstOrDefaultAsync(a => a.Id == addressId && a.UserId == userId);
-                if (address == null) throw new Exception("Địa chỉ không hợp lệ!");
+                // Không bắt lỗi addressId == null nếu khách nhập tay (tuỳ sếp, tạm thời tắt check cứng)
+                // var address = await _context.UserAddresses.FirstOrDefaultAsync(a => a.Id == addressId && a.UserId == userId);
+                // if (address == null) throw new Exception("Địa chỉ không hợp lệ!");
 
                 var order = new Order
                 {
                     UserId = userId,
-                    AddressId = addressId,
+                    AddressId = addressId, // Vẫn lưu ID, hoặc 1 nếu là khách nhập tay
                     OrderNote = note,
-                    TotalAmount = 0,
-                    DiscountAmount = 0,
-                    FinalAmount = 0,
-                    OrderStatus = "0", // Lưu kiểu string cho đồng bộ DB
+                    TotalAmount = 0,     // Tổng tiền hàng
+                    DiscountAmount = 0,  // Tiền trừ do Voucher
+                    FinalAmount = 0,     // Tiền khách phải trả
+                    OrderStatus = "0",
                     CreatedAt = DateTime.Now
                 };
 
+                // 1. TÍNH TIỀN HÀNG + TOPPING
                 foreach (var item in cartItems)
                 {
                     var product = await _context.Products.FindAsync(item.ProductId);
@@ -70,22 +72,48 @@ namespace NguyenDucHieu_2123110416.Services
                     order.OrderDetails.Add(item);
                 }
 
+                // 2. CỘNG TIỀN SHIP VÀO TỔNG TIỀN GỐC
+                order.TotalAmount += shippingFee;
+
+                // 3. TRỪ TIỀN VOUCHER
                 if (!string.IsNullOrWhiteSpace(voucherCode))
                 {
                     var voucher = await _context.Vouchers.FirstOrDefaultAsync(v => v.Code == voucherCode && v.IsActive);
                     if (voucher != null && voucher.ExpiryDate >= DateTime.Now)
                     {
                         order.VoucherId = voucher.Id;
-                        order.DiscountAmount = Math.Min(voucher.DiscountAmount, order.TotalAmount);
+                        // Chỉ giảm tối đa bằng tổng tiền hàng (không tính ship)
+                        order.DiscountAmount = Math.Min(voucher.DiscountAmount, (order.TotalAmount - shippingFee));
                     }
                 }
 
-                order.FinalAmount = order.TotalAmount - order.DiscountAmount;
+                // 4. TRỪ TIỀN ĐIỂM (1 điểm = 1000đ)
+                decimal pointsDiscountValue = usedPoints * 1000;
+
+                // 5. CHỐT SỐ TIỀN CUỐI CÙNG (Không được < 0)
+                order.FinalAmount = order.TotalAmount - order.DiscountAmount - pointsDiscountValue;
+                if (order.FinalAmount < 0) order.FinalAmount = 0;
 
                 _context.Orders.Add(order);
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await _context.SaveChangesAsync(); // Cần Save trước để lấy order.Id
 
+                // 6. GHI NHẬT KÝ TRỪ ĐIỂM VÀO BẢNG POINT TRANSACTIONS
+                if (usedPoints > 0)
+                {
+                    var pointTransaction = new PointTransaction
+                    {
+                        UserId = userId,
+                        OrderId = order.Id,
+                        Points = -usedPoints, // SỐ ÂM ĐỂ TRỪ ĐIỂM TRONG LỊCH SỬ
+                        Description = $"Sử dụng {usedPoints} điểm cho đơn hàng #{order.Id}",
+                        CreatedAt = DateTime.Now,
+                        CreatedBy = userId
+                    };
+                    _context.PointTransactions.Add(pointTransaction);
+                    await _context.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync();
                 return order;
             }
             catch (Exception)
@@ -113,40 +141,11 @@ namespace NguyenDucHieu_2123110416.Services
         // ====================================================================
         public async Task UpdateOrderStatusAsync(int orderId, int status)
         {
-            // 1. Tìm đơn hàng kèm thông tin khách để cộng điểm
-            var order = await _context.Orders
-                .Include(o => o.User)
-                .FirstOrDefaultAsync(o => o.Id == orderId);
-
+            // Logic cũ của sếp tui để nguyên vì ở OrdersController đã xử lý cộng điểm rồi.
+            var order = await _context.Orders.FindAsync(orderId);
             if (order == null) throw new Exception("Không thấy đơn hàng!");
 
-            // 2. Cập nhật trạng thái
             order.OrderStatus = status.ToString();
-
-            // 3. XỬ LÝ NGHIỆP VỤ KHI GIAO THÀNH CÔNG (Status = 2)
-            if (status == 2)
-            {
-                // Tính điểm: Ví dụ 10.000đ được 1 điểm
-                int earnedPoints = (int)(order.FinalAmount / 10000);
-
-                if (earnedPoints > 0)
-                {
-                    // Cộng điểm trực tiếp cho User
-                    order.User.LoyaltyPoints += earnedPoints;
-
-                    // Ghi lịch sử giao dịch để trang "Giao Dịch & Điểm Thưởng" có dữ liệu
-                    var transaction = new PointTransaction
-                    {
-                        UserId = order.UserId,
-                        OrderId = order.Id,
-                        Points = earnedPoints,
-                        Description = $"Tích điểm từ đơn hàng #{order.Id} (Hoàn thành)",
-                        CreatedAt = DateTime.Now
-                    };
-                    _context.PointTransactions.Add(transaction);
-                }
-            }
-
             await _context.SaveChangesAsync();
         }
     }

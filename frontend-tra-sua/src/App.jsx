@@ -31,6 +31,7 @@ import ContactManager from './pages/admin/contacts/ContactManager';
 import ActivityLogManager from "./components/ActivityLogManager";
 import ArticleManager from "./pages/admin/articles/ArticleManager"; 
 import BannerManager from "./pages/admin/banners/BannerManager"; // 👈 IMPORT BANNER
+import NotificationPage from './components/NotificationPage'; // 👈 IMPORT TRANG THÔNG BÁO
 
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -53,6 +54,7 @@ function App() {
           <Route path="articles" element={<ArticlesPage />} /> 
           <Route path="article/:id" element={<ArticleDetailPage />} /> 
           <Route path="/reviews" element={<AllReviewsPage />} />
+          <Route path="/notifications" element={<NotificationPage />} /> {/* 👈 ROUTE THÔNG BÁO */}
         </Route>
         
         {/* ADMIN ROUTES */}

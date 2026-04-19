@@ -4,9 +4,10 @@ namespace NguyenDucHieu_2123110416.Services
 {
     public interface IOrderService
     {
-        Task<Order> CreateOrderAsync(int userId, int addressId, string? voucherCode, List<OrderDetail> cartItems, string note);
+        // 💡 THÊM THAM SỐ shippingFee VÀ usedPoints VÀO ĐÂY
+        Task<Order> CreateOrderAsync(int userId, int addressId, string? voucherCode, List<OrderDetail> cartItems, string note, decimal shippingFee, int usedPoints);
+
         Task<List<Order>> GetUserOrdersAsync(int userId);
-        // Dùng int cho status để khớp với Controller và React
         Task UpdateOrderStatusAsync(int orderId, int status);
     }
 }
