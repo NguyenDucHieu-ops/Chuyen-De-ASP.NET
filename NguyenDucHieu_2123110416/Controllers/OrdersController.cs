@@ -20,17 +20,20 @@ namespace NguyenDucHieu_2123110416.Controllers
         private readonly AppDbContext _context;
         private readonly IHubContext<NotificationHub> _hubContext;
         private readonly IEmailService _emailService;
+        private readonly IConfiguration _config;
 
         public OrdersController(
             IOrderService orderService,
             AppDbContext context,
             IHubContext<NotificationHub> hubContext,
-            IEmailService emailService)
+            IEmailService emailService,
+            IConfiguration config)
         {
             _orderService = orderService;
             _context = context;
             _hubContext = hubContext;
             _emailService = emailService;
+            _config = config;
         }
 
         // ====================================================================
@@ -53,7 +56,7 @@ namespace NguyenDucHieu_2123110416.Controllers
 
             await _hubContext.Clients.All.SendAsync("ReceiveNotification", new
             {
-                userId = targetUserId, // Gửi kèm UserId để Frontend lọc "chính chủ"
+                userId = targetUserId,
                 id = notif.Id,
                 title = notif.Title,
                 message = notif.Message,
@@ -67,6 +70,59 @@ namespace NguyenDucHieu_2123110416.Controllers
                 string emailBody = $"<h3>{title}</h3><p>{message}</p><hr/><p>Cảm ơn sếp đã tin dùng HieuStore!</p>";
                 _ = _emailService.SendEmailAsync(email, title, emailBody);
             }
+        }
+
+        // ========================================================
+        // 🚀 HÀM HỨNG KẾT QUẢ TRẢ VỀ TỪ VNPAY 
+        // ========================================================
+        [AllowAnonymous]
+        [HttpGet("VnpayReturn")]
+        public async Task<IActionResult> VnpayReturn()
+        {
+            var vnpayData = Request.Query;
+            var vnpay = new VnPayLibrary();
+
+            foreach (var (key, value) in vnpayData)
+            {
+                if (!string.IsNullOrEmpty(key) && key.StartsWith("vnp_"))
+                {
+                    vnpay.AddResponseData(key, value.ToString());
+                }
+            }
+
+            string vnp_HashSecret = _config["Vnpay:HashSecret"] ?? "";
+            string vnp_SecureHash = Request.Query["vnp_SecureHash"].FirstOrDefault() ?? "";
+
+            bool checkSignature = false;
+            if (!string.IsNullOrEmpty(vnp_SecureHash))
+            {
+                checkSignature = vnpay.ValidateSignature(vnp_SecureHash, vnp_HashSecret);
+            }
+
+            if (checkSignature)
+            {
+                string vnp_ResponseCode = vnpayData["vnp_ResponseCode"].FirstOrDefault() ?? "";
+                string vnp_TxnRef = vnpayData["vnp_TxnRef"].FirstOrDefault() ?? "";
+
+                if (int.TryParse(vnp_TxnRef.Split('_').FirstOrDefault(), out int orderId))
+                {
+                    var order = await _context.Orders.Include(o => o.User).FirstOrDefaultAsync(o => o.Id == orderId);
+
+                    if (vnp_ResponseCode == "00")
+                    {
+                        // ĐÃ SỬA LỖI ÉP KIỂU TẠI ĐÂY: Thêm "" để biến số thành chữ
+                        if (order != null && order.OrderStatus != "2")
+                        {
+                            order.OrderStatus = "2"; // ĐÃ SỬA LỖI ÉP KIỂU TẠI ĐÂY
+                            order.UpdatedAt = DateTime.Now;
+                            await _context.SaveChangesAsync();
+                            await SendPrivateNotification(order.UserId, "Thanh toán thành công! 💳", $"Đơn hàng #HIEU-{orderId} đã được thanh toán qua VNPAY.", "PAYMENT_SUCCESS", "/profile", order.User?.Email);
+                        }
+                        return Redirect("https://nguyenduchieu-chuyen-de-asp-net.vercel.app/order/success");
+                    }
+                }
+            }
+            return Redirect("https://nguyenduchieu-chuyen-de-asp-net.vercel.app/order/fail");
         }
 
         [HttpGet]
@@ -143,7 +199,6 @@ namespace NguyenDucHieu_2123110416.Controllers
                 string status = request.Status;
                 await _orderService.UpdateOrderStatusAsync(id, int.Parse(status));
 
-                // 💡 LOAD KÈM PRODUCT NAME ĐỂ HIỆN TRONG THÔNG BÁO
                 var order = await _context.Orders
                     .Include(o => o.User)
                     .Include(o => o.OrderDetails).ThenInclude(od => od.Product)
@@ -176,7 +231,6 @@ namespace NguyenDucHieu_2123110416.Controllers
                     }
                     await _context.SaveChangesAsync();
 
-                    // 💡 TỔNG HỢP DANH SÁCH MÓN
                     string items = string.Join(", ", order.OrderDetails.Select(od => od.Product.ProductName + " (x" + od.Quantity + ")"));
 
                     string msg = status switch
@@ -213,19 +267,17 @@ namespace NguyenDucHieu_2123110416.Controllers
 
                 var order = await _orderService.CreateOrderAsync(currentUserId, request.AddressId, request.VoucherCode, orderDetails, request.Note ?? string.Empty, request.ShippingFee, request.UsedPoints);
 
-                // 💡 LOAD LẠI ĐƠN KÈM PRODUCT ĐỂ LẤY TÊN MÓN
                 var fullOrder = await _context.Orders
                     .Include(o => o.OrderDetails).ThenInclude(od => od.Product)
                     .Include(o => o.User)
                     .FirstOrDefaultAsync(o => o.Id == order.Id);
 
-                string items = string.Join(", ", fullOrder.OrderDetails.Select(od => od.Product.ProductName + " (x" + od.Quantity + ")"));
-
-                // 🚀 THÔNG BÁO ADMIN (ID = 1)
-                await SendPrivateNotification(1, "🔔 CÓ ĐƠN HÀNG MỚI!", $"Khách {fullOrder.User?.FullName} vừa đặt đơn #HIEU-{order.Id}: {items}", "NEW_ORDER", "/admin/orders");
-
-                // 🚀 THÔNG BÁO KHÁCH HÀNG
-                await SendPrivateNotification(currentUserId, "🎉 Đặt hàng thành công!", $"Đơn #HIEU-{order.Id} [{items}] đã gửi tới quán.", "CHECKOUT_SUCCESS", "/profile", fullOrder.User?.Email);
+                if (fullOrder != null)
+                {
+                    string items = string.Join(", ", fullOrder.OrderDetails.Select(od => od.Product.ProductName + " (x" + od.Quantity + ")"));
+                    await SendPrivateNotification(1, "🔔 CÓ ĐƠN HÀNG MỚI!", $"Khách {fullOrder.User?.FullName} vừa đặt đơn #HIEU-{order.Id}: {items}", "NEW_ORDER", "/admin/orders");
+                    await SendPrivateNotification(currentUserId, "🎉 Đặt hàng thành công!", $"Đơn #HIEU-{order.Id} [{items}] đã gửi tới quán.", "CHECKOUT_SUCCESS", "/profile", fullOrder.User?.Email);
+                }
 
                 return Ok(new { message = "Đặt hàng thành công!", orderId = order.Id, finalAmount = order.FinalAmount });
             }
