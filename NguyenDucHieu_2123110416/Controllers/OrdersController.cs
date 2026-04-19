@@ -110,19 +110,20 @@ namespace NguyenDucHieu_2123110416.Controllers
 
                     if (vnp_ResponseCode == "00")
                     {
-                        // ĐÃ SỬA LỖI ÉP KIỂU TẠI ĐÂY: Thêm "" để biến số thành chữ
                         if (order != null && order.OrderStatus != "2")
                         {
-                            order.OrderStatus = "2"; // ĐÃ SỬA LỖI ÉP KIỂU TẠI ĐÂY
+                            order.OrderStatus = "2";
                             order.UpdatedAt = DateTime.Now;
                             await _context.SaveChangesAsync();
                             await SendPrivateNotification(order.UserId, "Thanh toán thành công! 💳", $"Đơn hàng #HIEU-{orderId} đã được thanh toán qua VNPAY.", "PAYMENT_SUCCESS", "/profile", order.User?.Email);
                         }
-                        return Redirect("https://nguyenduchieu-chuyen-de-asp-net.vercel.app/order/success");
+                        // ĐÃ SỬA LINK VERCEL VỀ CHUẨN XÁC
+                        return Redirect("https://chuyen-de-asp-net.vercel.app/order/success");
                     }
                 }
             }
-            return Redirect("https://nguyenduchieu-chuyen-de-asp-net.vercel.app/order/fail");
+            // ĐÃ SỬA LINK VERCEL VỀ CHUẨN XÁC
+            return Redirect("https://chuyen-de-asp-net.vercel.app/order/fail");
         }
 
         [HttpGet]
