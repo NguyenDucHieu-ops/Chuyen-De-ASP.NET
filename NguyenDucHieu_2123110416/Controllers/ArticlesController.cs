@@ -4,10 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using NguyenDucHieu_2123110416.Data;
 using NguyenDucHieu_2123110416.Models;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
+using System.Text;
 
 namespace NguyenDucHieu_2123110416.Controllers
 {
-    // LỚP HỖ TRỢ ĐỂ SWAGGER HIỂU UPLOAD FILE
     public class ArticleRequest
     {
         public string Title { get; set; } = string.Empty;
@@ -119,16 +120,37 @@ namespace NguyenDucHieu_2123110416.Controllers
 
         private async Task<string> SaveArticleImage(IFormFile file)
         {
-            string folderPath = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "images", "articles");
+            // Fix đường dẫn cho Linux (Render)
+            string rootPath = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            string folderPath = Path.Combine(rootPath, "images", "articles");
+
             if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
+
             string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-            using (var stream = new FileStream(Path.Combine(folderPath, fileName), FileMode.Create))
+            string filePath = Path.Combine(folderPath, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
             return fileName;
         }
 
-        private string GenerateSlug(string title) => title.ToLower().Replace(" ", "-").Trim();
+        private string GenerateSlug(string title)
+        {
+            // Logic xóa dấu tiếng Việt cho link đẹp
+            string str = title.ToLower().Trim();
+            str = Regex.Replace(str, @"[áàảãạâấầẩẫậăắằẳẵặ]", "a");
+            str = Regex.Replace(str, @"[éèẻẽẹêếềểễệ]", "e");
+            str = Regex.Replace(str, @"[íìỉĩị]", "i");
+            str = Regex.Replace(str, @"[óòỏõọôốồổỗộơớờởỡợ]", "o");
+            str = Regex.Replace(str, @"[úùủũụưứừửữự]", "u");
+            str = Regex.Replace(str, @"[ýỳỷỹỵ]", "y");
+            str = Regex.Replace(str, @"[đ]", "d");
+            str = Regex.Replace(str, @"[^a-z0-9\s-]", "");
+            str = Regex.Replace(str, @"\s+", "-").Trim();
+            str = Regex.Replace(str, @"-+", "-");
+            return str;
+        }
     }
 }
