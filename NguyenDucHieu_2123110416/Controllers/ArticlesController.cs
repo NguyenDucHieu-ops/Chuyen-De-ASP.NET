@@ -7,6 +7,14 @@ using System.Security.Claims;
 
 namespace NguyenDucHieu_2123110416.Controllers
 {
+    // LỚP HỖ TRỢ ĐỂ SWAGGER HIỂU UPLOAD FILE
+    public class ArticleRequest
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public IFormFile? Image { get; set; }
+    }
+
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -21,7 +29,6 @@ namespace NguyenDucHieu_2123110416.Controllers
             _env = env;
         }
 
-        // 1. LẤY CHI TIẾT BÀI VIẾT
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetArticle(int id)
@@ -31,37 +38,30 @@ namespace NguyenDucHieu_2123110416.Controllers
             return Ok(article);
         }
 
-        // 2. LẤY DANH SÁCH BÀI VIẾT (MỚI NHẤT LÊN ĐẦU)
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> GetArticles() =>
             Ok(await _context.Articles.Where(a => !a.IsDeleted).OrderByDescending(a => a.CreatedAt).ToListAsync());
 
-        // 3. THÊM BÀI VIẾT MỚI
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Create([FromForm] string title, [FromForm] string content, [FromForm] IFormFile? image)
+        public async Task<IActionResult> Create([FromForm] ArticleRequest request)
         {
             try
             {
                 var adminIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (adminIdClaim == null) return Unauthorized(new { error = "Hết hạn đăng nhập sếp ơi!" });
+                if (adminIdClaim == null) return Unauthorized(new { error = "Hết hạn đăng nhập!" });
 
-                int adminId = int.Parse(adminIdClaim);
                 string imgName = "default_post.jpg";
-
-                if (image != null)
-                {
-                    imgName = await SaveArticleImage(image);
-                }
+                if (request.Image != null) imgName = await SaveArticleImage(request.Image);
 
                 var article = new Article
                 {
-                    Title = title,
-                    Content = content,
-                    Slug = GenerateSlug(title),
+                    Title = request.Title,
+                    Content = request.Content,
+                    Slug = GenerateSlug(request.Title),
                     Thumbnail = "/images/articles/" + imgName,
-                    CreatedBy = adminId,
+                    CreatedBy = int.Parse(adminIdClaim),
                     CreatedAt = DateTime.Now,
                     IsPublished = true,
                     IsDeleted = false
@@ -77,40 +77,35 @@ namespace NguyenDucHieu_2123110416.Controllers
             }
         }
 
-        // 4. CHỈNH SỬA BÀI VIẾT (Sử dụng POST để né lỗi 405 WebDAV)
         [HttpPost("update/{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateArticle(int id, [FromForm] string title, [FromForm] string content, [FromForm] IFormFile? image)
+        public async Task<IActionResult> UpdateArticle(int id, [FromForm] ArticleRequest request)
         {
             try
             {
                 var article = await _context.Articles.FindAsync(id);
-                if (article == null || article.IsDeleted) return NotFound(new { error = "Không tìm thấy bài viết!" });
+                if (article == null || article.IsDeleted) return NotFound();
 
-                // Cập nhật thông tin cơ bản
-                article.Title = title;
-                article.Content = content;
-                article.Slug = GenerateSlug(title);
+                article.Title = request.Title;
+                article.Content = request.Content;
+                article.Slug = GenerateSlug(request.Title);
                 article.UpdatedAt = DateTime.Now;
                 article.UpdatedBy = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-                // Xử lý ảnh mới nếu có
-                if (image != null && image.Length > 0)
+                if (request.Image != null)
                 {
-                    string newImgName = await SaveArticleImage(image);
-                    article.Thumbnail = "/images/articles/" + newImgName;
+                    article.Thumbnail = "/images/articles/" + await SaveArticleImage(request.Image);
                 }
 
                 await _context.SaveChangesAsync();
-                return Ok(new { message = "Cập nhật bài viết thành công! ✨" });
+                return Ok(new { message = "Cập nhật thành công! ✨" });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Lỗi khi cập nhật!", detail = ex.Message });
+                return StatusCode(500, new { error = "Lỗi!", detail = ex.Message });
             }
         }
 
-        // 5. XÓA BÀI VIẾT (XÓA MỀM)
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
@@ -119,30 +114,21 @@ namespace NguyenDucHieu_2123110416.Controllers
             if (art == null) return NotFound();
             art.IsDeleted = true;
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Đã xóa bài viết thành công!" });
+            return Ok(new { message = "Đã xóa!" });
         }
-
-        // --- CÁC HÀM PHỤ TRỢ (PRIVATE HELPERS) ---
 
         private async Task<string> SaveArticleImage(IFormFile file)
         {
             string folderPath = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "images", "articles");
             if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
-
             string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-            string fullPath = Path.Combine(folderPath, fileName);
-
-            using (var stream = new FileStream(fullPath, FileMode.Create))
+            using (var stream = new FileStream(Path.Combine(folderPath, fileName), FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
             return fileName;
         }
 
-        private string GenerateSlug(string title)
-        {
-            // Chuyển tiêu đề thành slug đơn giản (Tùy biến thêm nếu cần)
-            return title.ToLower().Replace(" ", "-").Trim();
-        }
+        private string GenerateSlug(string title) => title.ToLower().Replace(" ", "-").Trim();
     }
 }
