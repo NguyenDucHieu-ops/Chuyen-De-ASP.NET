@@ -8,17 +8,18 @@ using NguyenDucHieu_2123110416.Hubs;
 using System.Text;
 using System.Text.Json.Serialization;
 
-// ========================================================
-// 🚀 ĐÃ FIX LỖI RENDER 139 BẰNG CÁCH TẮT GIÁM SÁT FILE (inotify)
-// ========================================================
-var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-{
-    Args = args,
-    ContentRootPath = Directory.GetCurrentDirectory()
-});
+var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false);
-builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false);
+// ========================================================
+// 🚀 CÁCH TẮT GIÁM SÁT FILE CHUẨN NHẤT (FIX LỖI 139 & 500 RENDER)
+// ========================================================
+builder.Host.ConfigureAppConfiguration((context, config) =>
+{
+    foreach (var s in config.Sources.OfType<Microsoft.Extensions.Configuration.Json.JsonConfigurationSource>())
+    {
+        s.ReloadOnChange = false; // Tắt tính năng tự reload ngốn RAM của Render
+    }
+});
 
 // 1. ĐĂNG KÝ CƠ SỞ DỮ LIỆU & SERVICES
 builder.Services.AddHttpContextAccessor();
@@ -34,11 +35,10 @@ builder.Services.AddSignalR();
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowHieuStore", policy => {
         policy
-            // PHẢI CHỈ ĐỊNH ĐÚNG LINK VERCEL VÀ LOCALHOST, KHÔNG ĐƯỢC DÙNG DẤU * (AllowAnyOrigin) NỮA
             .WithOrigins("https://chuyen-de-asp-net.vercel.app", "http://localhost:5173", "http://localhost:3000")
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials(); // BẮT BUỘC PHẢI CÓ ĐỂ TRUYỀN TOKEN CHO SIGNALR
+            .AllowCredentials(); // Bắt buộc cho SignalR
     });
 });
 
@@ -67,11 +67,9 @@ builder.Services.AddControllers().AddJsonOptions(x =>
 
 builder.Services.AddEndpointsApiExplorer();
 
-// 4. CẤU HÌNH SWAGGER (FIX LỖI 500 RENDER)
+// 4. CẤU HÌNH SWAGGER
 builder.Services.AddSwaggerGen(c => {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Hieu Store API", Version = "v1" });
-
-    // ĐÃ BỎ dòng c.MapType<IFormFile> cũ - Nguyên nhân gây lỗi 500 trên server
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -95,11 +93,10 @@ builder.Services.AddSwaggerGen(c => {
 var app = builder.Build();
 
 // 5. MIDDLEWARE
-// Chú ý: app.UseSwagger() phải nằm ngoài IF để Render hiện được bảng API
 app.UseSwagger();
 app.UseSwaggerUI(c => {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Hieu Store API v1");
-    c.RoutePrefix = "swagger"; // Truy cập link: ...onrender.com/swagger
+    c.RoutePrefix = "swagger";
 });
 
 app.UseStaticFiles();
