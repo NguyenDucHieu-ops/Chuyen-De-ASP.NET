@@ -8,7 +8,17 @@ using NguyenDucHieu_2123110416.Hubs;
 using System.Text;
 using System.Text.Json.Serialization;
 
-var builder = WebApplication.CreateBuilder(args);
+// ========================================================
+// 🚀 ĐÃ FIX LỖI RENDER 139 BẰNG CÁCH TẮT GIÁM SÁT FILE (inotify)
+// ========================================================
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = Directory.GetCurrentDirectory()
+});
+
+builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false);
+builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false);
 
 // 1. ĐĂNG KÝ CƠ SỞ DỮ LIỆU & SERVICES
 builder.Services.AddHttpContextAccessor();
