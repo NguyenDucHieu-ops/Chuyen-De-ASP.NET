@@ -117,13 +117,13 @@ namespace NguyenDucHieu_2123110416.Controllers
                             await _context.SaveChangesAsync();
                             await SendPrivateNotification(order.UserId, "Thanh toán thành công! 💳", $"Đơn hàng #HIEU-{orderId} đã được thanh toán qua VNPAY.", "PAYMENT_SUCCESS", "/profile", order.User?.Email);
                         }
-                        // ĐÃ SỬA LINK VERCEL VỀ CHUẨN XÁC
-                        return Redirect("https://chuyen-de-asp-net.vercel.app/order/success");
+                        // ĐÃ SỬA THÀNH /payment-result ĐỂ KHỚP VỚI REACT CỦA SẾP
+                        return Redirect($"https://chuyen-de-asp-net.vercel.app/payment-result?vnp_ResponseCode=00&vnp_TxnRef={vnp_TxnRef}");
                     }
                 }
             }
-            // ĐÃ SỬA LINK VERCEL VỀ CHUẨN XÁC
-            return Redirect("https://chuyen-de-asp-net.vercel.app/order/fail");
+            // ĐÃ SỬA THÀNH /payment-result ĐỂ KHỚP VỚI REACT CỦA SẾP
+            return Redirect("https://chuyen-de-asp-net.vercel.app/payment-result?vnp_ResponseCode=99");
         }
 
         [HttpGet]

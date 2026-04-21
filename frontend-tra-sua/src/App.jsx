@@ -13,6 +13,8 @@ import PaymentResult from './pages/client/cart/PaymentResult';
 import ArticlesPage from './pages/client/articles/ArticlesPage';
 import ArticleDetailPage from './pages/client/articles/ArticleDetailPage';
 import AllReviewsPage from './pages/client/AllReviewsPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 // Auth & Admin
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -54,6 +56,8 @@ function App() {
           <Route path="articles" element={<ArticlesPage />} /> 
           <Route path="article/:id" element={<ArticleDetailPage />} /> 
           <Route path="/reviews" element={<AllReviewsPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+<Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/notifications" element={<NotificationPage />} /> {/* 👈 ROUTE THÔNG BÁO */}
         </Route>
         

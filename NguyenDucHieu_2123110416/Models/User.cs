@@ -15,6 +15,8 @@ namespace NguyenDucHieu_2123110416.Models
         [StringLength(15)] public string PhoneNumber { get; set; } = string.Empty;
         public string? Address { get; set; } 
         public int LoyaltyPoints { get; set; } = 0;
+        public string? ResetPasswordToken { get; set; } // Mã để reset pass (Có thể null)
+        public DateTime? ResetPasswordExpiry { get; set; } // Thời gian mã hết hạn
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
     }

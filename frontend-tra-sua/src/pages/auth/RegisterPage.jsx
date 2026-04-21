@@ -10,28 +10,38 @@ const RegisterPage = () => {
     phoneNumber: ''
   });
   
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // 🚀 HỆ THỐNG TOAST THÔNG BÁO XỊN
+  const [notifies, setNotifies] = useState([]);
+  const showToast = (msg, type = 'success') => {
+    const id = Date.now();
+    setNotifies(prev => [...prev, { id, msg, type }]);
+    setTimeout(() => {
+      setNotifies(prev => prev.filter(n => n.id !== id));
+    }, 3000);
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
-      // ĐÃ SỬA: Dùng VITE_API_URL thay vì link Render cứng
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/Auth/register`, formData);
       
-      alert(response.data.message || "Đăng ký thành công! Hãy đăng nhập nhé.");
-      navigate('/login');
+      showToast(response.data.message || "Đăng ký thành công! Hãy đăng nhập nhé.", "success");
+      
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
 
     } catch (err) {
       console.error(err);
       if (err.response && err.response.data && err.response.data.error) {
-        setError(err.response.data.error);
+        showToast(err.response.data.error, "error");
       } else {
-        setError('Đăng ký thất bại. Vui lòng kiểm tra lại!');
+        showToast('Đăng ký thất bại. Vui lòng kiểm tra lại!', "error");
       }
     } finally {
       setLoading(false);
@@ -39,7 +49,19 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative">
+      
+      {/* 🚀 TOAST UI */}
+      <div className="fixed top-10 right-10 z-[300] flex flex-col gap-2">
+        {notifies.map(n => (
+          <div key={n.id} className={`px-8 py-5 rounded-[2rem] font-black uppercase text-[10px] shadow-2xl animate-slideInRight tracking-widest border-2 flex items-center gap-3 ${
+            n.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-rose-500 text-white border-rose-400'
+          }`}>
+            {n.type === 'success' ? '✅' : '❌'} {n.msg}
+          </div>
+        ))}
+      </div>
+
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100 mt-10 mb-10">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800 tracking-wider mb-2">
@@ -47,8 +69,6 @@ const RegisterPage = () => {
           </h1>
           <p className="text-gray-500">Gia nhập gia đình HieuStore ngay thôi!</p>
         </div>
-
-        {error && <div className="bg-red-50 text-red-500 p-3 rounded-lg mb-6 text-sm font-medium border border-red-100">{error}</div>}
 
         <form onSubmit={handleRegister} className="space-y-4">
           <div>

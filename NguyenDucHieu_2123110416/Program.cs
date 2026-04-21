@@ -20,10 +20,15 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddSignalR();
 
-// 2. MỞ CỬA CORS
+// 2. MỞ CỬA CORS (ĐÃ FIX LỖI SIGNALR)
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowHieuStore", policy => {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        policy
+            // PHẢI CHỈ ĐỊNH ĐÚNG LINK VERCEL VÀ LOCALHOST, KHÔNG ĐƯỢC DÙNG DẤU * (AllowAnyOrigin) NỮA
+            .WithOrigins("https://chuyen-de-asp-net.vercel.app", "http://localhost:5173", "http://localhost:3000")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials(); // BẮT BUỘC PHẢI CÓ ĐỂ TRUYỀN TOKEN CHO SIGNALR
     });
 });
 

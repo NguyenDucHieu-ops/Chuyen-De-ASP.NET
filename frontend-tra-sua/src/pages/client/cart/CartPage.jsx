@@ -22,18 +22,22 @@ const CartPage = () => {
   const [usePoints, setUsePoints] = useState(false); 
   const POINT_VALUE = 1000;
 
-  // 3. TOAST THÔNG BÁO CHUYÊN NGHIỆP
-  const [notify, setNotify] = useState({ show: false, msg: '', type: 'success' });
+  // 3. TOAST THÔNG BÁO CHUYÊN NGHIỆP (ĐÃ NÂNG CẤP)
+  const [notifies, setNotifies] = useState([]); // Hỗ trợ hiện nhiều toast cùng lúc
+
   const showToast = (msg, type = 'success') => {
-    setNotify({ show: true, msg, type });
-    setTimeout(() => setNotify({ show: false, msg: '', type: 'success' }), 3000);
+    const id = Date.now();
+    setNotifies(prev => [...prev, { id, msg, type }]);
+    // Tự động xóa sau 3 giây
+    setTimeout(() => {
+      setNotifies(prev => prev.filter(n => n.id !== id));
+    }, 3000);
   };
 
   // 4. QUẢN LÝ ĐỊA CHỈ & LOGIC VẬN CHUYỂN
   const [addresses, setAddresses] = useState([]); 
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   
-  // 💡 TỰ ĐỘNG LẤY LẠI ĐỊA CHỈ PHỤ ĐÃ LƯU TỪ TRƯỚC
   const [manualAddress, setManualAddress] = useState(() => {
     return localStorage.getItem('hieu_saved_manual_address') || '';
   }); 
@@ -46,10 +50,11 @@ const CartPage = () => {
   const [distanceKm, setDistanceKm] = useState(0);
   const [isCalculatingShip, setIsCalculatingShip] = useState(false);
 
-  // 📍 TỌA ĐỘ QUÁN MẶC ĐỊNH
+  // Modal Xoá (Thay cho alert/confirm xấu xí)
+  const [itemToDelete, setItemToDelete] = useState(null);
+
   const SHOP_COORDS = { lat: 10.8231, lon: 106.7666 }; 
 
-  // Fetch dữ liệu khởi tạo
   useEffect(() => {
     if (token) {
       const headers = { Authorization: `Bearer ${token}` };
@@ -72,7 +77,6 @@ const CartPage = () => {
     }
   }, [token]);
 
-  // CÔNG THỨC TÍNH KHOẢNG CÁCH
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -84,7 +88,6 @@ const CartPage = () => {
     return R * c; 
   };
 
-  // HÀM TÍNH PHÍ SHIP
   const estimateShippingFee = async (addressText) => {
     if (!addressText.trim()) return;
     setIsCalculatingShip(true);
@@ -114,7 +117,6 @@ const CartPage = () => {
       setIsAddressConfirmed(true);
       showToast(finalDist > 0 ? `Khoảng cách: ${finalDist.toFixed(1)}km. Phí ship: ${finalFee.toLocaleString()}đ` : "Đã xác nhận địa chỉ!");
 
-    // 💡 FIX LỖI: Bỏ chữ err trong ngoặc
     } catch {
       setShippingFee(15000); 
       setIsAddressConfirmed(true);
@@ -124,14 +126,22 @@ const CartPage = () => {
     }
   };
 
-  // Các hàm Giỏ hàng
-  const saveCart = (newCart) => { setCart(newCart); localStorage.setItem('hieu_cart', JSON.stringify(newCart)); window.dispatchEvent(new Event("storage")); };
+  const saveCart = (newCart) => { 
+    setCart(newCart); 
+    localStorage.setItem('hieu_cart', JSON.stringify(newCart)); 
+    window.dispatchEvent(new Event("storage")); 
+  };
   
   const updateQuantity = (cartId, delta) => {
     const newCart = cart.map(item => {
       if (item.cartId === cartId) {
-        const newQty = Math.max(1, item.quantity + delta);
-        if (newQty !== item.quantity) showToast(delta > 0 ? `Đã thêm món ${item.productName}` : `Đã bớt món ${item.productName}`, 'success');
+        const newQty = item.quantity + delta;
+        // Nếu giảm xuống 0 -> Hỏi xóa
+        if (newQty < 1) {
+            setItemToDelete(item);
+            return item; // Trả về nguyên trạng trong lúc chờ hỏi
+        }
+        showToast(delta > 0 ? `Đã thêm 1 ${item.productName}` : `Đã giảm 1 ${item.productName}`, 'success');
         return { ...item, quantity: newQty };
       }
       return item;
@@ -139,16 +149,15 @@ const CartPage = () => {
     saveCart(newCart);
   };
   
-  const removeFromCart = (cartId) => {
-    const itemToRemove = cart.find(i => i.cartId === cartId);
-    if (window.confirm(`Xoá món "${itemToRemove?.productName}" khỏi giỏ hàng?`)) {
-      const newCart = cart.filter(item => item.cartId !== cartId);
-      saveCart(newCart);
-      showToast(`Đã xoá ${itemToRemove?.productName} khỏi giỏ`, 'error');
+  const confirmDelete = () => {
+    if (itemToDelete) {
+        const newCart = cart.filter(item => item.cartId !== itemToDelete.cartId);
+        saveCart(newCart);
+        showToast(`Đã xoá ${itemToDelete.productName} khỏi giỏ`, 'error');
+        setItemToDelete(null);
     }
   };
 
-  // TÍNH TOÁN TIỀN BẠC CHUẨN XÁC
   const subtotal = cart.reduce((s, i) => s + (i.unitPrice * i.quantity), 0);
   const maxPointsPossible = Math.floor((subtotal + shippingFee - discount) / POINT_VALUE);
   const actualPointsToUse = Math.min(userPoints, maxPointsPossible);
@@ -169,7 +178,6 @@ const CartPage = () => {
         showToast("Mã voucher không tồn tại hoặc hết hạn!", 'error'); 
         setDiscount(0); 
       }
-    // 💡 FIX LỖI: Bỏ chữ err trong ngoặc
     } catch { showToast("Lỗi hệ thống voucher!", 'error'); } 
     finally { setIsApplying(false); }
   };
@@ -196,7 +204,7 @@ const CartPage = () => {
       }))
     };
 
-    showToast("Hệ thống đang xử lý đơn hàng...", "success");
+    showToast("Đang tạo đơn hàng, chờ xíu sếp...", "success");
 
     try {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/Orders/checkout`, orderData, {
@@ -209,15 +217,14 @@ const CartPage = () => {
 
       if (paymentMethod === 'VNPAY') {
         const payRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/Payments/create-vnpay-url/${res.data.orderId}?amount=${finalTotal}`);
-        window.location.href = payRes.data.url;
+        window.location.href = payRes.data.url; // Chuyển thẳng sang VNPAY
       } else {
-        showToast("ĐẶT HÀNG THÀNH CÔNG! ĐANG CHUYỂN HƯỚNG...", "success");
+        showToast("ĐẶT HÀNG THÀNH CÔNG!", "success");
         localStorage.removeItem('hieu_cart');
         window.dispatchEvent(new Event("storage"));
-        setTimeout(() => navigate('/profile'), 2000);
+        setTimeout(() => navigate('/profile'), 1500);
       }
     } catch (error) { 
-      // 💡 CHỖ NÀY GIỮ LẠI VÌ CÓ SỬ DỤNG `error.response`
       showToast(error.response?.data?.error || "Giao dịch bị lỗi sếp ơi!", 'error'); 
     }
   };
@@ -225,12 +232,29 @@ const CartPage = () => {
   return (
     <div className="max-w-7xl mx-auto py-10 px-6 animate-fadeIn text-gray-900 relative min-h-screen">
       
-      {/* TOAST NOTIFICATION UI */}
-      {notify.show && (
-        <div className={`fixed top-10 right-10 z-[300] px-8 py-5 rounded-[2rem] font-black uppercase text-[10px] shadow-2xl animate-bounce tracking-widest border-2 flex items-center gap-3 ${
-          notify.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-rose-500 text-white border-rose-400'
-        }`}>
-          {notify.type === 'success' ? '✅' : '❌'} {notify.msg}
+      {/* 🚀 TOAST CONTAINER MỚI (Hiện mượt hơn, xếp chồng lên nhau) */}
+      <div className="fixed top-10 right-10 z-[300] flex flex-col gap-2">
+        {notifies.map(n => (
+          <div key={n.id} className={`px-8 py-5 rounded-[2rem] font-black uppercase text-[10px] shadow-2xl animate-slideInRight tracking-widest border-2 flex items-center gap-3 ${
+            n.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-rose-500 text-white border-rose-400'
+          }`}>
+            {n.type === 'success' ? '✅' : '❌'} {n.msg}
+          </div>
+        ))}
+      </div>
+
+      {/* 🚀 MODAL XÁC NHẬN XOÁ ĐẸP MẮT (Thay thế alert/confirm) */}
+      {itemToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[400] flex items-center justify-center animate-fadeIn">
+           <div className="bg-white p-8 rounded-[3rem] shadow-2xl max-w-sm w-full text-center border-4 border-rose-100 animate-scaleIn">
+              <div className="text-6xl mb-4">🗑️</div>
+              <h3 className="font-black text-xl text-gray-900 uppercase italic">Xoá món này?</h3>
+              <p className="font-bold text-gray-500 text-sm mt-2 mb-8">Sếp có chắc chắn muốn bỏ <span className="text-indigo-600">{itemToDelete.productName}</span> ra khỏi giỏ không?</p>
+              <div className="flex gap-4">
+                 <button onClick={() => setItemToDelete(null)} className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-gray-200 transition-all">Giữ Lại</button>
+                 <button onClick={confirmDelete} className="flex-1 py-4 bg-rose-500 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs shadow-lg shadow-rose-200 hover:bg-rose-600 transition-all">Đồng Ý Xoá</button>
+              </div>
+           </div>
         </div>
       )}
 
@@ -239,7 +263,7 @@ const CartPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-8">
           
-          {/* 📍 ĐỊA CHỈ & LOGIC TÍNH SHIP */}
+          {/* 📍 ĐỊA CHỈ */}
           <section className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 relative overflow-hidden">
              {isCalculatingShip && (
                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center">
@@ -257,10 +281,7 @@ const CartPage = () => {
                     {addresses.map(addr => (
                       <div 
                         key={addr.id} 
-                        onClick={() => {
-                          setSelectedAddressId(addr.id); 
-                          setIsAddressConfirmed(false); 
-                        }}
+                        onClick={() => { setSelectedAddressId(addr.id); setIsAddressConfirmed(false); }}
                         className={`p-6 rounded-[2rem] border-2 cursor-pointer transition-all relative ${selectedAddressId === addr.id ? 'border-indigo-600 bg-indigo-50 shadow-md' : 'border-gray-50 hover:border-indigo-200'}`}
                       >
                         {selectedAddressId === addr.id && <div className="absolute top-4 right-4 w-4 h-4 bg-indigo-600 rounded-full border-4 border-indigo-200"></div>}
@@ -303,18 +324,20 @@ const CartPage = () => {
                 }} 
                 className={`px-8 py-4 w-full rounded-[2rem] font-black text-[10px] uppercase tracking-widest transition-all mt-2 ${isAddressConfirmed ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700'}`}
              >
-                {isAddressConfirmed ? `✓ Đã xác định khoảng cách: ${distanceKm > 0 ? distanceKm.toFixed(1) + 'km' : 'Hợp lệ'}` : "🛰️ Xác nhận địa chỉ & Tính phí ship"}
+                {isAddressConfirmed ? `✓ Khoảng cách: ${distanceKm > 0 ? distanceKm.toFixed(1) + 'km' : 'Hợp lệ'}` : "🛰️ Xác nhận địa chỉ & Tính phí ship"}
              </button>
           </section>
 
+          {/* 💳 THANH TOÁN */}
           <section className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100">
              <h3 className="text-xl font-black mb-6 uppercase italic">💳 Hình thức thanh toán</h3>
              <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => {setPaymentMethod('COD'); showToast("Đã chọn Tiền mặt", 'success');}} className={`p-6 rounded-[2rem] border-2 font-black transition-all ${paymentMethod === 'COD' ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md' : 'border-gray-50 text-gray-400 hover:bg-gray-50'}`}>TIỀN MẶT</button>
-                <button onClick={() => {setPaymentMethod('VNPAY'); showToast("Đã chọn VNPAY", 'success');}} className={`p-6 rounded-[2rem] border-2 font-black transition-all ${paymentMethod === 'VNPAY' ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md' : 'border-gray-50 text-gray-400 hover:bg-gray-50'}`}>VNPAY</button>
+                <button onClick={() => {setPaymentMethod('COD'); showToast("Đã chọn Tiền mặt");}} className={`p-6 rounded-[2rem] border-2 font-black transition-all ${paymentMethod === 'COD' ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md' : 'border-gray-50 text-gray-400 hover:bg-gray-50'}`}>TIỀN MẶT</button>
+                <button onClick={() => {setPaymentMethod('VNPAY'); showToast("Đã chọn VNPAY");}} className={`p-6 rounded-[2rem] border-2 font-black transition-all ${paymentMethod === 'VNPAY' ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-md' : 'border-gray-50 text-gray-400 hover:bg-gray-50'}`}>VNPAY</button>
              </div>
           </section>
 
+          {/* 🛒 DANH SÁCH MÓN */}
           <section className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100">
              <h3 className="font-black mb-6 uppercase text-gray-400 tracking-widest italic">Giỏ hàng của sếp ({cart.length})</h3>
              {cart.map(item => (
@@ -329,12 +352,13 @@ const CartPage = () => {
                       <span className="font-black text-sm w-4 text-center">{item.quantity}</span>
                       <button onClick={() => updateQuantity(item.cartId, 1)} className="font-black text-gray-400 hover:text-emerald-500 transition-all text-xl">+</button>
                    </div>
-                   <button onClick={() => removeFromCart(item.cartId)} className="text-gray-300 hover:text-red-500 transition-colors ml-2 font-black text-2xl">×</button>
+                   <button onClick={() => setItemToDelete(item)} className="text-gray-300 hover:text-red-500 transition-colors ml-2 font-black text-2xl">×</button>
                 </div>
              ))}
           </section>
         </div>
 
+        {/* 💵 TỔNG KẾT */}
         <div className="lg:sticky lg:top-24">
           <div className="bg-white p-10 rounded-[3.5rem] shadow-2xl border border-gray-50 space-y-8 relative overflow-hidden">
              <h3 className="font-black text-3xl uppercase italic border-b border-gray-50 pb-6 tracking-tighter">Hóa đơn</h3>
@@ -353,7 +377,7 @@ const CartPage = () => {
                       <span className="text-lg">⭐</span>
                       <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Điểm hiện có: <span className="text-emerald-600">{userPoints}</span></p>
                    </div>
-                   <input type="checkbox" checked={usePoints} onChange={(e) => {setUsePoints(e.target.checked); showToast(e.target.checked ? "Đã dùng điểm tích luỹ" : "Đã huỷ dùng điểm", "success");}} disabled={userPoints <= 0} className="w-6 h-6 accent-emerald-600 cursor-pointer" />
+                   <input type="checkbox" checked={usePoints} onChange={(e) => {setUsePoints(e.target.checked); showToast(e.target.checked ? "Đã dùng điểm tích luỹ" : "Đã huỷ dùng điểm");}} disabled={userPoints <= 0} className="w-6 h-6 accent-emerald-600 cursor-pointer" />
                 </div>
                 <p className="text-[9px] font-bold text-gray-400 leading-relaxed uppercase">{usePoints ? `Giảm được ${(actualPointsToUse * POINT_VALUE).toLocaleString()}đ` : `1 điểm đổi được ${POINT_VALUE.toLocaleString()}đ giảm giá`}</p>
              </div>
