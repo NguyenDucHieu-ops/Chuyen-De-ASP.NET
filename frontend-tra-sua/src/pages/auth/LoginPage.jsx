@@ -7,7 +7,6 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // 🚀 HỆ THỐNG TOAST THÔNG BÁO XỊN
   const [notifies, setNotifies] = useState([]);
   const showToast = (msg, type = 'success') => {
     const id = Date.now();
@@ -44,7 +43,6 @@ const LoginPage = () => {
 
       showToast("Đăng nhập thành công!", "success");
       
-      // Đợi Toast hiện xong rồi mới chuyển trang
       setTimeout(() => {
         if (role === 'Admin') {
           navigate('/admin'); 
@@ -67,8 +65,6 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans relative">
-      
-      {/* 🚀 TOAST UI */}
       <div className="fixed top-10 right-10 z-[300] flex flex-col gap-2">
         {notifies.map(n => (
           <div key={n.id} className={`px-8 py-5 rounded-[2rem] font-black uppercase text-[10px] shadow-2xl animate-slideInRight tracking-widest border-2 flex items-center gap-3 ${
@@ -93,8 +89,7 @@ const LoginPage = () => {
           <div>
             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-4">Email Account</label>
             <input 
-              type="email" 
-              required
+              type="email" required
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
               className="w-full p-5 bg-gray-50 border-2 border-transparent focus:border-blue-500 rounded-[1.8rem] outline-none transition-all font-bold text-gray-800"
@@ -104,8 +99,7 @@ const LoginPage = () => {
           <div>
             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-4">Security Password</label>
             <input 
-              type="password" 
-              required
+              type="password" required
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
               className="w-full p-5 bg-gray-50 border-2 border-transparent focus:border-blue-500 rounded-[1.8rem] outline-none transition-all font-bold text-gray-800"
@@ -114,8 +108,7 @@ const LoginPage = () => {
           </div>
           
           <button 
-            type="submit" 
-            disabled={loading} 
+            type="submit" disabled={loading} 
             className={`w-full py-5 rounded-[2rem] text-white font-black text-sm uppercase tracking-[0.2em] transition-all shadow-xl mt-6 active:scale-95 ${
               loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/30'
             }`}
@@ -125,13 +118,8 @@ const LoginPage = () => {
         </form>
 
         <div className="mt-10 text-center space-y-4 text-[10px] font-black text-gray-400 uppercase tracking-widest relative z-10">
-          <p>
-            Chưa có thẻ nhân viên? <Link to="/register" className="text-blue-600 hover:underline font-black">Đăng ký ngay</Link>
-          </p>
-          {/* NÚT QUÊN MẬT KHẨU (Dành cho sau này) */}
-          <p>
-            <button className="text-gray-500 hover:text-rose-500 hover:underline transition-colors">Trí nhớ kém? Quên mật khẩu</button>
-          </p>
+<p>Chưa có tài khoản? <Link to="/register" className="text-blue-600 hover:underline font-black">Đăng ký ngay</Link></p>          {/* ĐÃ FIX LINK QUÊN MẬT KHẨU TẠI ĐÂY */}
+          <p><Link to="/forgot-password" className="text-gray-500 hover:text-rose-500 hover:underline transition-colors">Trí nhớ kém? Quên mật khẩu</Link></p>
         </div>
       </div>
     </div>

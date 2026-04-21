@@ -36,9 +36,6 @@ namespace NguyenDucHieu_2123110416.Controllers
             _config = config;
         }
 
-        // ====================================================================
-        // 💡 HÀM TIỆN ÍCH: GỬI THÔNG BÁO (LƯU DB + BẮN SIGNALR + GỬI MAIL)
-        // ====================================================================
         private async Task SendPrivateNotification(int targetUserId, string title, string message, string type, string link, string? email = null)
         {
             var notif = new Notification
@@ -72,9 +69,6 @@ namespace NguyenDucHieu_2123110416.Controllers
             }
         }
 
-        // ========================================================
-        // 🚀 HÀM HỨNG KẾT QUẢ TRẢ VỀ TỪ VNPAY 
-        // ========================================================
         [AllowAnonymous]
         [HttpGet("VnpayReturn")]
         public async Task<IActionResult> VnpayReturn()
@@ -106,7 +100,11 @@ namespace NguyenDucHieu_2123110416.Controllers
 
                 if (int.TryParse(vnp_TxnRef.Split('_').FirstOrDefault(), out int orderId))
                 {
-                    var order = await _context.Orders.Include(o => o.User).FirstOrDefaultAsync(o => o.Id == orderId);
+                    // 💡 FIX LỖI 4: LOAD KÈM PRODUCT ĐỂ LẤY TÊN MÓN TRÀ SỮA LÚC VNPAY TRẢ VỀ
+                    var order = await _context.Orders
+                        .Include(o => o.User)
+                        .Include(o => o.OrderDetails).ThenInclude(od => od.Product)
+                        .FirstOrDefaultAsync(o => o.Id == orderId);
 
                     if (vnp_ResponseCode == "00")
                     {
@@ -115,17 +113,22 @@ namespace NguyenDucHieu_2123110416.Controllers
                             order.OrderStatus = "2";
                             order.UpdatedAt = DateTime.Now;
                             await _context.SaveChangesAsync();
-                            await SendPrivateNotification(order.UserId, "Thanh toán thành công! 💳", $"Đơn hàng #HIEU-{orderId} đã được thanh toán qua VNPAY.", "PAYMENT_SUCCESS", "/profile", order.User?.Email);
+
+                            // TẠO CHUỖI DANH SÁCH MÓN ĂN CHI TIẾT
+                            string items = string.Join(", ", order.OrderDetails.Select(od => od.Product.ProductName + " (x" + od.Quantity + ")"));
+
+                            // BÁO THÔNG BÁO XỊN CÓ TÊN MÓN
+                            await SendPrivateNotification(order.UserId, "Thanh toán VNPAY thành công! 💳", $"Đơn hàng #HIEU-{orderId} [{items}] đã được xác nhận.", "PAYMENT_SUCCESS", "/profile", order.User?.Email);
+                            await SendPrivateNotification(1, "💰 TINH TINH VNPAY!", $"Khách {order.User?.FullName} vừa thanh toán đơn #HIEU-{orderId} [{items}].", "NEW_ORDER", "/admin/orders");
                         }
-                        // ĐÃ SỬA THÀNH /payment-result ĐỂ KHỚP VỚI REACT CỦA SẾP
                         return Redirect($"https://chuyen-de-asp-net.vercel.app/payment-result?vnp_ResponseCode=00&vnp_TxnRef={vnp_TxnRef}");
                     }
                 }
             }
-            // ĐÃ SỬA THÀNH /payment-result ĐỂ KHỚP VỚI REACT CỦA SẾP
             return Redirect("https://chuyen-de-asp-net.vercel.app/payment-result?vnp_ResponseCode=99");
         }
 
+        // CÁC HÀM GET BỎ QUA CHO ĐỠ DÀI...
         [HttpGet]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllOrders()
@@ -276,8 +279,18 @@ namespace NguyenDucHieu_2123110416.Controllers
                 if (fullOrder != null)
                 {
                     string items = string.Join(", ", fullOrder.OrderDetails.Select(od => od.Product.ProductName + " (x" + od.Quantity + ")"));
-                    await SendPrivateNotification(1, "🔔 CÓ ĐƠN HÀNG MỚI!", $"Khách {fullOrder.User?.FullName} vừa đặt đơn #HIEU-{order.Id}: {items}", "NEW_ORDER", "/admin/orders");
-                    await SendPrivateNotification(currentUserId, "🎉 Đặt hàng thành công!", $"Đơn #HIEU-{order.Id} [{items}] đã gửi tới quán.", "CHECKOUT_SUCCESS", "/profile", fullOrder.User?.Email);
+
+                    // 💡 FIX LỖI 3: NẾU THANH TOÁN VNPAY THÌ NÍN LẶNG KHÔNG BÁO CHO KHÁCH (CHỜ TRẢ VỀ RỒI BÁO)
+                    if (request.PaymentMethod == "VNPAY")
+                    {
+                        await SendPrivateNotification(1, "⏳ KHÁCH ĐANG THANH TOÁN VNPAY", $"Khách {fullOrder.User?.FullName} vừa lên đơn #HIEU-{order.Id}: {items}. (Đang chờ chuyển khoản...)", "NEW_ORDER", "/admin/orders");
+                    }
+                    else
+                    {
+                        // THANH TOÁN COD THÌ BÁO THÀNH CÔNG LUÔN
+                        await SendPrivateNotification(1, "🔔 CÓ ĐƠN HÀNG MỚI (Tiền Mặt)!", $"Khách {fullOrder.User?.FullName} vừa đặt đơn #HIEU-{order.Id}: {items}", "NEW_ORDER", "/admin/orders");
+                        await SendPrivateNotification(currentUserId, "🎉 Đặt hàng thành công!", $"Đơn #HIEU-{order.Id} [{items}] đã gửi tới quán. Shipper sẽ gọi sếp sớm!", "CHECKOUT_SUCCESS", "/profile", fullOrder.User?.Email);
+                    }
                 }
 
                 return Ok(new { message = "Đặt hàng thành công!", orderId = order.Id, finalAmount = order.FinalAmount });
@@ -323,6 +336,10 @@ namespace NguyenDucHieu_2123110416.Controllers
         public int UsedPoints { get; set; }
         public decimal ShippingFee { get; set; }
         public string? Note { get; set; }
+
+        // BỔ SUNG THÊM PAYMENT METHOD VÀO DTO ĐỂ BACKEND BIẾT ĐƯỜNG MÀ CHẶN THÔNG BÁO
+        public string PaymentMethod { get; set; } = "COD";
+
         public List<OrderItemDTO> Items { get; set; } = new();
     }
 

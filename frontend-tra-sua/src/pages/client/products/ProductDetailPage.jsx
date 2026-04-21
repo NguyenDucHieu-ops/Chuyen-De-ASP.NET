@@ -13,6 +13,16 @@ const ProductDetailPage = () => {
   const [selectedSize, setSelectedSize] = useState('M');
   const [selectedToppings, setSelectedToppings] = useState([]);
 
+  // 🚀 HỆ THỐNG TOAST UI (MỚI)
+  const [notifies, setNotifies] = useState([]);
+  const showToast = (msg, type = 'success') => {
+    const toastId = Date.now();
+    setNotifies(prev => [...prev, { id: toastId, msg, type }]);
+    setTimeout(() => {
+      setNotifies(prev => prev.filter(n => n.id !== toastId));
+    }, 3000);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -54,8 +64,6 @@ const ProductDetailPage = () => {
 
   const calculatePrice = () => {
     let price = product.basePrice || 0;
-    
-    // 💡 CHỈ cộng tiền Size và Topping nếu món này là đồ uống (hasOptions = true)
     if (product.hasOptions) {
       if (selectedSize === 'L') price += product.sizeUpPrice || 0;
       if (selectedSize === 'XL') price += product.sizeXlPrice || 0;
@@ -90,12 +98,28 @@ const ProductDetailPage = () => {
     channel.postMessage('updated');
     channel.close();
 
-    alert(`✅ Đã thêm "${product.productName}" vào giỏ hàng!`);
-    navigate('/cart');
+    showToast(`✅ Đã thêm "${product.productName}" vào giỏ hàng!`, 'success');
+    
+    // Đợi 1 giây cho Toast bay ra cho đẹp rồi mới nhảy sang giỏ hàng
+    setTimeout(() => {
+        navigate('/cart');
+    }, 1000);
   };
 
   return (
     <div className="min-h-screen bg-[#fdfaf7] pb-[150px] relative">
+      
+      {/* 🚀 TOAST CONTAINER */}
+      <div className="fixed top-10 right-10 z-[300] flex flex-col gap-2">
+        {notifies.map(n => (
+          <div key={n.id} className={`px-8 py-5 rounded-[2rem] font-black uppercase text-[10px] shadow-2xl animate-slideInRight tracking-widest border-2 flex items-center gap-3 ${
+            n.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-rose-500 text-white border-rose-400'
+          }`}>
+            {n.msg}
+          </div>
+        ))}
+      </div>
+
       <div className="max-w-7xl mx-auto px-6 py-12">
         <button 
           onClick={() => navigate(-1)} 
@@ -106,7 +130,6 @@ const ProductDetailPage = () => {
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-20">
-          {/* LEFT - IMAGE */}
           <div className="relative">
             <div className="sticky top-28 bg-white rounded-[3.5rem] overflow-hidden shadow-2xl border border-gray-100 p-10">
               <img 
@@ -117,7 +140,6 @@ const ProductDetailPage = () => {
             </div>
           </div>
 
-          {/* RIGHT - DETAILS */}
           <div className="flex flex-col">
             <div className="mb-10">
               <span className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 rounded-full text-[10px] font-black tracking-[3px] uppercase">
@@ -131,10 +153,8 @@ const ProductDetailPage = () => {
               </p>
             </div>
 
-            {/* 💡 CHỈ HIỂN THỊ KHI SẢN PHẨM CÓ TÙY CHỌN (TRÀ SỮA/NƯỚC) */}
             {product.hasOptions && (
               <>
-                {/* SIZE */}
                 <div className="mb-12 animate-fadeIn">
                   <h3 className="uppercase text-[10px] font-black tracking-[3px] text-gray-400 mb-5 flex items-center gap-3">
                     <span className="text-xl">📏</span> CHỌN KÍCH CỠ LY
@@ -163,7 +183,6 @@ const ProductDetailPage = () => {
                   </div>
                 </div>
 
-                {/* TOPPING */}
                 <div className="animate-fadeIn">
                   <h3 className="uppercase text-[10px] font-black tracking-[3px] text-gray-400 mb-5 flex items-center gap-3">
                     <span className="text-xl">🍓</span> THÊM TOPPING XỊN
@@ -213,7 +232,6 @@ const ProductDetailPage = () => {
         </div>
       </div>
 
-      {/* STICKY BOTTOM BAR */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50">
         <div className="max-w-7xl mx-auto px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-6">
           <div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -110,7 +110,6 @@ const ProfilePage = () => {
     setIsSubmitting(true);
     
     const submitData = new FormData();
-    // Lấy productId từ đơn hàng đã chọn
     const productId = selectedOrder?.orderDetails?.[0]?.productId;
     
     if (!productId) {
@@ -134,7 +133,6 @@ const ProfilePage = () => {
       showToast("Cảm ơn sếp đã đánh giá! ⭐");
       setShowReviewModal(false); setComment(''); setImages([]); setRating(5);
       
-      // 💡 CẬP NHẬT STATE NGAY LẬP TỨC ĐỂ KHÓA NÚT
       setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, isReviewed: true } : o));
     } catch (err) { 
       showToast(err.response?.data?.error || "Lỗi đánh giá!", "error"); 
@@ -166,7 +164,6 @@ const ProfilePage = () => {
             <h1 className="text-4xl font-black text-gray-900 uppercase italic mb-1 tracking-tighter">{user.fullName || "Đang tải..."}</h1>
             <p className="text-gray-500 font-bold text-sm mb-4">{user.email}</p>
             <div className="flex gap-3">
-              {/* 💡 HIỂN THỊ ĐIỂM TẠI ĐÂY */}
               <span className="bg-emerald-50 text-emerald-700 px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-emerald-100">
                 ⭐ {(user.currentPoints || 0).toLocaleString()} Điểm thưởng
               </span>
@@ -217,17 +214,20 @@ const ProfilePage = () => {
                     const isCompleted = order.orderStatus === 2 || order.orderStatus === '2' || order.orderStatus === 'Completed';
                     const isCancelled = order.orderStatus === 3 || order.orderStatus === '3' || order.orderStatus === 'Cancelled';
                     
-                    // 💡 Tính toán hạn review 2 ngày
                     const completedDate = new Date(order.updatedAt || order.createdAt);
                     const daysPassed = (new Date() - completedDate) / (1000 * 60 * 60 * 24);
                     const isReviewable = daysPassed <= 2; 
 
                     return (
                       <div key={order.id} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center group hover:shadow-xl hover:border-indigo-200 transition-all gap-6">
-                        <div className="space-y-2">
+                        <div className="space-y-2 flex-1">
                           <p className="font-black text-gray-900 text-xl tracking-tighter uppercase">Mã đơn #HIEU-{order.id}</p>
                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 italic">
                             🗓️ {new Date(order.createdAt).toLocaleString('vi-VN')}
+                          </p>
+                          {/* 💡 FIX 1: HIỂN THỊ TÊN MÓN ĂN TẠI ĐÂY */}
+                          <p className="text-sm font-bold text-indigo-600 mt-2 line-clamp-2">
+                             {order.orderDetails?.map(item => item.productName).join(', ') || 'Đang tải món ăn...'}
                           </p>
                         </div>
                         <div className="flex flex-col md:flex-row md:items-center gap-6 w-full md:w-auto border-t md:border-t-0 pt-6 md:pt-0 border-gray-100">
@@ -245,12 +245,10 @@ const ProfilePage = () => {
                             {isCompleted && (
                               <>
                                 {order.isReviewed ? (
-                                  /* 💡 NÚT ĐÃ ĐÁNH GIÁ: MÀU ĐEN ĐẬM, KHÓA BẤM, IN ĐẬM THEO Ý SẾP */
                                   <button disabled className="w-full md:w-auto bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 opacity-90 cursor-not-allowed border-2 border-gray-800">
                                     <span className="text-yellow-400">★</span> ĐÃ ĐÁNH GIÁ
                                   </button>
                                 ) : isReviewable ? (
-                                  /* CHƯA ĐÁNH GIÁ & CÒN HẠN */
                                   <button 
                                     onClick={() => { setSelectedOrder(order); setShowReviewModal(true); }}
                                     className="w-full md:w-auto bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all"
@@ -258,9 +256,8 @@ const ProfilePage = () => {
                                     ⭐ Đánh giá ngay
                                   </button>
                                 ) : (
-                                  /* CHƯA ĐÁNH GIÁ NHƯNG QUÁ HẠN 2 NGÀY */
                                   <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest px-6 py-4 bg-gray-50 rounded-2xl border border-gray-100 italic">
-                                    Quá hạn Review
+                                    Quá hạn đánh giá
                                   </span>
                                 )}
                               </>
@@ -314,16 +311,28 @@ const ProfilePage = () => {
           {/* --- TAB 3: THÔNG TIN TÀI KHOẢN --- */}
           {activeTab === 'settings' && (
             <div className="bg-white p-10 md:p-14 rounded-[3.5rem] border border-gray-100 shadow-sm animate-fadeIn">
-              <div className="flex justify-between items-center mb-10">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
                 <h3 className="text-2xl font-black text-gray-800 uppercase italic flex items-center gap-4">
                   <div className="w-2 h-8 bg-indigo-600 rounded-full"></div> Hồ sơ cá nhân
                 </h3>
-                {!isEditing && (
-                  <button onClick={() => setIsEditing(true)} className="bg-indigo-50 text-indigo-600 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">
-                    Chỉnh sửa ✏️
-                  </button>
-                )}
+                
+                <div className="flex gap-3">
+                   {/* 💡 FIX 3: NÚT ĐỔI MẬT KHẨU LINK SANG TRANG FORGOT PASSWORD */}
+                   <Link 
+                      to="/forgot-password" 
+                      className="bg-rose-50 text-rose-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all border border-rose-100"
+                   >
+                      Đổi mật khẩu 🔒
+                   </Link>
+
+                   {!isEditing && (
+                     <button onClick={() => setIsEditing(true)} className="bg-indigo-50 text-indigo-600 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">
+                       Chỉnh sửa ✏️
+                     </button>
+                   )}
+                </div>
               </div>
+
               <form onSubmit={handleUpdateProfile} className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-3">
@@ -334,11 +343,26 @@ const ProfilePage = () => {
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Số điện thoại</label>
                     <input type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} disabled={!isEditing} className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-6 py-5 font-black text-gray-800 outline-none transition-all disabled:opacity-50" required />
                   </div>
+
+                  {/* 💡 FIX 2: THÊM Ô ĐỊA CHỈ VÀO FORM */}
+                  <div className="space-y-3 md:col-span-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Địa chỉ giao hàng mặc định</label>
+                    <textarea 
+                       value={formData.address} 
+                       onChange={(e) => setFormData({...formData, address: e.target.value})} 
+                       disabled={!isEditing} 
+                       className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-6 py-5 font-black text-gray-800 outline-none transition-all disabled:opacity-50 resize-none" 
+                       rows="2" 
+                       placeholder="Nhập địa chỉ của sếp (VD: 123 Đường ABC, Quận XYZ)"
+                    />
+                  </div>
                 </div>
+
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Email đăng nhập</label>
                   <input type="email" value={user.email} disabled className="w-full bg-gray-100 rounded-2xl px-6 py-5 font-black text-gray-400 cursor-not-allowed" />
                 </div>
+                
                 {isEditing && (
                   <div className="pt-6 flex gap-4">
                     <button type="button" onClick={() => { setIsEditing(false); setFormData({fullName: user.fullName, phone: user.phone, address: user.address}); }} className="flex-1 py-5 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-200">Hủy bỏ</button>
@@ -353,7 +377,7 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      {/* --- MODAL REVIEW: GIỮ NGUYÊN ĐỦ LOGIC --- --- */}
+      {/* --- MODAL REVIEW --- */}
       {showReviewModal && (
         <div className="fixed inset-0 bg-gray-900/90 backdrop-blur-md z-[150] flex items-center justify-center p-6">
           <div className="bg-white rounded-[3.5rem] w-full max-w-2xl p-12 shadow-2xl animate-fadeIn relative">

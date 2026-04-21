@@ -1,14 +1,15 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.CodeAnalysis.Elfie.Serialization;
+using Microsoft.EntityFrameworkCore;
 using NguyenDucHieu_2123110416.Models;
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Http;
-using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace NguyenDucHieu_2123110416.Data
 {
@@ -46,7 +47,7 @@ namespace NguyenDucHieu_2123110416.Data
 
         // 👇 BẢNG LƯU NHẬT KÝ HỆ THỐNG
         public DbSet<ActivityLog> ActivityLogs { get; set; }
-
+        public DbSet<Reward> Rewards { get; set; }
         // --- CẤU HÌNH & TẠO DỮ LIỆU MẪU (SEED DATA) ---
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

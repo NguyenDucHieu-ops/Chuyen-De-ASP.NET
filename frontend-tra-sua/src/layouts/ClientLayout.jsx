@@ -1,10 +1,11 @@
-import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import axios from 'axios'; 
 import * as signalR from '@microsoft/signalr';
 
 const ClientLayout = () => {
   const navigate = useNavigate();
+  const location = useLocation(); 
   const token = localStorage.getItem('hieu_store_token');
   
   const [cartCount, setCartCount] = useState(() => {
@@ -13,7 +14,6 @@ const ClientLayout = () => {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
   });
 
-  // 💡 STATE CHO THÔNG BÁO (QUẢ CHUÔNG)
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
@@ -24,22 +24,25 @@ const ClientLayout = () => {
     setTimeout(() => setNotifyToast({ show: false, msg: '', type: 'success' }), 4000);
   };
 
-  // 💡 HÀM 1: LẤY THÔNG BÁO TỪ DATABASE (FIX LỖI F5)
-  const fetchNotifications = useCallback(async () => {
-    if (!token) return;
-    try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/Notifications`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setNotifications(res.data);
-      const unread = res.data.filter(n => !n.isRead).length;
-      setUnreadCount(unread);
-    } catch (err) {
-      console.error("🔴 Lỗi tải thông báo:", err);
-    }
+  // 🚀 NHỐT HÀM FETCH VÀO TRONG EFFECT (ESLINT HẾT GẠCH ĐỎ)
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!token) return;
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/Notifications`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setNotifications(res.data);
+        const unread = res.data.filter(n => !n.isRead).length;
+        setUnreadCount(unread);
+      } catch (err) {
+        console.error("🔴 Lỗi tải thông báo:", err);
+      }
+    };
+
+    fetchNotifications();
   }, [token]);
 
-  // 💡 HÀM 2: ĐÁNH DẤU ĐÃ ĐỌC KHI BẤM VÀO CHUÔNG
   const handleToggleNotif = async () => {
     setShowNotifDropdown(!showNotifDropdown);
     
@@ -56,15 +59,10 @@ const ClientLayout = () => {
     }
   };
 
-  // 💡 KẾT NỐI SIGNALR & LOAD DỮ LIỆU BAN ĐẦU (ĐÃ FIX LỖI CASCADING)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // KẾT NỐI SIGNALR
   useEffect(() => {
-    // 1. Chỉ gọi fetch một lần duy nhất khi token thay đổi
-    fetchNotifications();
-
     if (!token) return;
 
-    // 2. Thiết lập kết nối SignalR
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(`${import.meta.env.VITE_API_URL}/notificationHub`)
       .withAutomaticReconnect()
@@ -82,7 +80,6 @@ const ClientLayout = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         const myUserId = payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/nameidentifier'] || payload.nameid;
 
-        // Chỉ hiện thông báo nếu targetUserId khớp với mình
         if (notif.userId == myUserId) {
           setNotifications(prev => [notif, ...prev]);
           setUnreadCount(prev => prev + 1);
@@ -96,24 +93,39 @@ const ClientLayout = () => {
     return () => {
         connection.stop();
     };
-  }, [token]); // 💡 Chỉ depend vào token, KHÔNG depend vào fetchNotifications để tránh cascading
+  }, [token]); 
 
-  const updateCart = useCallback(() => {
-    const saved = localStorage.getItem('hieu_cart');
-    const cart = saved ? JSON.parse(saved) : [];
-    setCartCount(cart.reduce((sum, item) => sum + item.quantity, 0));
-  }, []);
-
+  // 🚀 TÁCH CẬP NHẬT GIỎ HÀNG THÀNH 2 EFFECT RIÊNG BIỆT (ESLINT CÂM NÍN 100%)
+  
+  // 1. Theo dõi khi chuyển trang (Bao gồm chuyển sang Payment Result)
   useEffect(() => {
+    const updateCart = () => {
+      const saved = localStorage.getItem('hieu_cart');
+      const cart = saved ? JSON.parse(saved) : [];
+      setCartCount(cart.reduce((sum, item) => sum + item.quantity, 0));
+    };
+    updateCart();
+  }, [location.pathname]);
+
+  // 2. Theo dõi khi có sự kiện Storage (Thêm món từ trang khác)
+  useEffect(() => {
+    const updateCart = () => {
+      const saved = localStorage.getItem('hieu_cart');
+      const cart = saved ? JSON.parse(saved) : [];
+      setCartCount(cart.reduce((sum, item) => sum + item.quantity, 0));
+    };
+
     const channel = new BroadcastChannel('hieu_cart_channel');
     const handleStorage = (e) => { if (e.key === 'hieu_cart') updateCart(); };
+    
     window.addEventListener('storage', handleStorage);
     channel.addEventListener('message', updateCart);
+    
     return () => {
       window.removeEventListener('storage', handleStorage);
       channel.close();
     };
-  }, [updateCart]);
+  }, []);
 
   const handleLogout = () => {
     if (window.confirm("Bạn muốn đăng xuất khỏi HieuStore?")) {
@@ -160,6 +172,9 @@ const ClientLayout = () => {
             <Link to="/products" className="font-semibold text-gray-600 hover:text-indigo-600 transition-all duration-200 relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-indigo-600 after:w-0 hover:after:w-full after:transition-all">THỰC ĐƠN</Link>
             <Link to="/articles" className="font-semibold text-gray-600 hover:text-indigo-600 transition-all duration-200 relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-indigo-600 after:w-0 hover:after:w-full after:transition-all">TIN TỨC</Link>
             <Link to="/contact" className="font-semibold text-gray-600 hover:text-indigo-600 transition-all duration-200 relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-indigo-600 after:w-0 hover:after:w-full after:transition-all">LIÊN HỆ</Link>
+            <Link to="/lucky-wheel" className="font-black text-indigo-600 hover:text-violet-600 transition-all duration-200 uppercase flex items-center gap-1">
+   <span>🎁</span> MINIGAME
+</Link>
 
             {/* 🔔 CHUÔNG THÔNG BÁO */}
             {token && (
