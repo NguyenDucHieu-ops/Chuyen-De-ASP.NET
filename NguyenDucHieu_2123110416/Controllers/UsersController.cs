@@ -20,7 +20,7 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
 
         // ====================================================
-        // PHẦN 1: CÁC API DÀNH CHO ADMIN QUẢN LÝ (Giữ nguyên logic của sếp)
+        // PHẦN 1: CÁC API DÀNH CHO ADMIN QUẢN LÝ
         // ====================================================
 
         [HttpGet]
@@ -136,7 +136,6 @@ namespace NguyenDucHieu_2123110416.Controllers
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return NotFound("Không tìm thấy người dùng");
 
-            // 💡 TÍNH TỔNG ĐIỂM TỪ CÁC GIAO DỊCH (FIX LỖI ĐIỂM KO HIỆN)
             var totalPoints = await _context.PointTransactions
                 .Where(pt => pt.UserId == userId && pt.IsDeleted == false)
                 .SumAsync(pt => pt.Points);
@@ -146,8 +145,8 @@ namespace NguyenDucHieu_2123110416.Controllers
                 fullName = user.FullName,
                 email = user.Email,
                 phone = user.PhoneNumber,
-                address = user.Address ?? "Chưa cập nhật địa chỉ", // Trả về địa chỉ thực từ DB
-                currentPoints = totalPoints // 💡 Gửi tổng điểm về cho React
+                address = user.Address ?? "Chưa cập nhật địa chỉ",
+                currentPoints = totalPoints
             });
         }
 
@@ -164,7 +163,6 @@ namespace NguyenDucHieu_2123110416.Controllers
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return NotFound("Không tìm thấy người dùng");
 
-            // 💡 KIỂM TRA XEM EMAIL MỚI CÓ BỊ TRÙNG VỚI NGƯỜI KHÁC KHÔNG
             if (user.Email != request.Email)
             {
                 bool emailExists = await _context.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId);
@@ -177,10 +175,41 @@ namespace NguyenDucHieu_2123110416.Controllers
 
             user.FullName = request.FullName;
             user.PhoneNumber = request.Phone;
-            user.Address = request.Address; // 💡 Cập nhật địa chỉ thực vào DB
+            user.Address = request.Address;
 
             await _context.SaveChangesAsync();
             return Ok(new { message = "Cập nhật hồ sơ thành công! ✨" });
+        }
+
+        // ====================================================
+        // 💡💡💡 CHỖ NÀY NÈ SẾP ƠI: API ĐỔI MẬT KHẨU TẠI CHỖ
+        // ====================================================
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto request)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            // Lấy ID người dùng đang đăng nhập
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+            int userId = int.Parse(userIdClaim);
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return NotFound("Không tìm thấy người dùng");
+
+            // 1. So sánh mật khẩu khách vừa gõ với mật khẩu cũ trong Database
+            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash);
+            if (!isPasswordValid)
+            {
+                return BadRequest(new { error = "Mật khẩu hiện tại không đúng sếp ơi!" });
+            }
+
+            // 2. Nếu đúng thì băm (hash) mật khẩu mới và lưu vào Database
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Đổi mật khẩu thành công!" });
         }
 
         // ====================================================
@@ -221,7 +250,6 @@ namespace NguyenDucHieu_2123110416.Controllers
             [MaxLength(50, ErrorMessage = "Tên quá dài!")]
             public string FullName { get; set; } = string.Empty;
 
-            // 💡 ĐÃ THÊM TRƯỜNG EMAIL VÀO ĐÂY ĐỂ BACKEND NHẬN DỮ LIỆU
             [Required(ErrorMessage = "Không được để trống email!")]
             [EmailAddress(ErrorMessage = "Định dạng email không hợp lệ!")]
             public string Email { get; set; } = string.Empty;
@@ -231,6 +259,17 @@ namespace NguyenDucHieu_2123110416.Controllers
             public string Phone { get; set; } = string.Empty;
 
             public string Address { get; set; } = string.Empty;
+        }
+
+        // 💡 DTO MỚI: Hứng dữ liệu từ Frontend gửi xuống
+        public class ChangePasswordDto
+        {
+            [Required(ErrorMessage = "Vui lòng nhập mật khẩu hiện tại!")]
+            public string CurrentPassword { get; set; } = string.Empty;
+
+            [Required(ErrorMessage = "Vui lòng nhập mật khẩu mới!")]
+            [MinLength(6, ErrorMessage = "Mật khẩu mới phải có ít nhất 6 ký tự!")]
+            public string NewPassword { get; set; } = string.Empty;
         }
     }
 }
