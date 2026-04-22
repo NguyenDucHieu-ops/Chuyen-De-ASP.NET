@@ -13,7 +13,7 @@ namespace NguyenDucHieu_2123110416.Controllers
     public class SpinController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private const int SPIN_COST = 200; // Mỗi lần quay tốn 200 điểm
+        private const int SPIN_COST = 50; // Mỗi lần quay tốn 200 điểm
 
         public SpinController(AppDbContext context)
         {

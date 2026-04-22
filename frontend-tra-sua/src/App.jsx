@@ -29,7 +29,7 @@ import VoucherManager from './pages/admin/vouchers/VoucherManager';
 import ReviewManager from './pages/admin/reviews/ReviewManager';
 import PaymentManager from './pages/admin/payments/PaymentManager';
 import ContactManager from './pages/admin/contacts/ContactManager';
-
+import RewardManager from './pages/admin/rewards/RewardManager';
 // Quản lý Mới
 import ActivityLogManager from "./components/ActivityLogManager";
 import ArticleManager from "./pages/admin/articles/ArticleManager"; 
@@ -77,6 +77,7 @@ function App() {
             <Route path="payments" element={<PaymentManager />} /> 
             <Route path="contacts" element={<ContactManager />} />
             <Route path="articles" element={<ArticleManager />} />
+            <Route path="rewards" element={<RewardManager />} />
             <Route path="activity-logs" element={<ActivityLogManager />} />
             <Route path="banners" element={<BannerManager />} /> {/* 👈 GẮN ROUTE BANNER */}
           </Route>

@@ -24,24 +24,29 @@ const AdminLayout = () => {
     contacts: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>,
     activityLogs: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
     articles: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>,
-    // 👇 ICON BANNER MỚI
-    banners: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+    banners: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>,
+    // 👇 THÊM ICON HỘP QUÀ CHO MINIGAME
+    rewards: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
   };
 
   const menuItems = [
     { path: '/admin', icon: icons.dashboard, label: 'Tổng Quan' },
-    { path: '/admin/banners', icon: icons.banners, label: 'Quản Lý Banner' }, // 👈 MỚI THÊM
+    { path: '/admin/banners', icon: icons.banners, label: 'Quản Lý Banner' },
     { path: '/admin/articles', icon: icons.articles, label: 'Bài Viết & Tin Tức' },
     { path: '/admin/categories', icon: icons.categories, label: 'Quản Lý Danh Mục' },
     { path: '/admin/products', icon: icons.products, label: 'Quản Lý Sản Phẩm' },
     { path: '/admin/toppings', icon: icons.toppings, label: 'Quản Lý Topping' },
     { path: '/admin/orders', icon: icons.orders, label: 'Đơn Hàng & Chi Tiết' },
     { path: '/admin/vouchers', icon: icons.vouchers, label: 'Mã Khuyến Mãi' },
+    // 👇 THÊM LINK MENU VÀO ĐÂY
+    { path: '/admin/rewards', icon: icons.rewards, label: 'Quà Tặng & Minigame' },
     { path: '/admin/users', icon: icons.users, label: 'Người Dùng & Quyền' },
     { path: '/admin/reviews', icon: icons.reviews, label: 'Đánh Giá (Reviews)' },
     { path: '/admin/payments', icon: icons.payments, label: 'Giao Dịch (Payments)' },
     { path: '/admin/contacts', icon: icons.contacts, label: 'Hòm Thư Liên Hệ' },
     { path: '/admin/activity-logs', icon: icons.activityLogs, label: 'Nhật Ký Hoạt Động' }, 
+    // 👇 THÊM LINK MENU VÀO ĐÂY
+    { path: '/admin/rewards', icon: icons.rewards, label: 'Quà Tặng & Minigame' },
   ];
 
   return (

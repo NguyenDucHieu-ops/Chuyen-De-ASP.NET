@@ -44,7 +44,9 @@ const ProductManager = () => {
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  // 💡 HÀM XỬ LÝ IMPORT EXCEL (ĐÃ FIX LỖI UNUSED ERR)
+  // =========================================================
+  // 🚀 XỬ LÝ IMPORT EXCEL (HIỂN THỊ CHI TIẾT LỖI)
+  // =========================================================
   const handleImportExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -55,14 +57,26 @@ const ProductManager = () => {
     showSystemNotify("Đang xử lý dữ liệu Excel...", "success");
 
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/Products/import`, formData, {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/Products/import`, formData, {
         headers: { ...headers, 'Content-Type': 'multipart/form-data' }
       });
-      showSystemNotify("Đã nạp toàn bộ sản phẩm từ Excel! 📊");
+
+      const data = res.data;
+      
+      if (data.errorCount > 0) {
+        // Có lỗi nhưng vẫn nạp thành công 1 phần
+        showSystemNotify(data.message, "error");
+        // Hiện popup danh sách các dòng lỗi cho sếp dễ sửa
+        alert(`⚠️ PHÁT HIỆN DỮ LIỆU LỖI TRONG FILE:\n\n${data.errors.join('\n')}\n\nLưu ý: Các dòng đúng đã được nạp thành công!`);
+      } else {
+        // Đúng 100%
+        showSystemNotify(data.message, "success");
+      }
+
       fetchProducts();
     } catch (err) {
-      console.error("Import Error:", err); // 💡 Dùng biến err ở đây để hết lỗi gạch đỏ
-      showSystemNotify(err.response?.data?.error || "Lỗi file Excel hoặc định dạng không đúng!", "error");
+      console.error("Import Error:", err);
+      showSystemNotify(err.response?.data?.error || "Lỗi hệ thống khi nạp file!", "error");
     } finally {
       e.target.value = null; 
     }

@@ -5,7 +5,7 @@ using NguyenDucHieu_2123110416.Data;
 using NguyenDucHieu_2123110416.DTOs;
 using NguyenDucHieu_2123110416.Models;
 using System.Security.Claims;
-using ClosedXML.Excel; 
+using ClosedXML.Excel;
 
 namespace NguyenDucHieu_2123110416.Controllers
 {
@@ -64,6 +64,10 @@ namespace NguyenDucHieu_2123110416.Controllers
             }
             catch (Exception ex) { return BadRequest(new { error = ex.Message }); }
         }
+
+        // =========================================================
+        // 🚀 CƠ CHẾ PARTIAL SUCCESS (CHUẨN CÔNG NGHIỆP) 
+        // =========================================================
         [HttpPost("import")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ImportExcel(IFormFile file)
@@ -74,6 +78,7 @@ namespace NguyenDucHieu_2123110416.Controllers
             {
                 var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
                 int successCount = 0;
+                var errorLogs = new List<string>(); // 💡 Sổ ghi nợ lỗi
 
                 using (var stream = new MemoryStream())
                 {
@@ -81,23 +86,36 @@ namespace NguyenDucHieu_2123110416.Controllers
                     using (var workbook = new XLWorkbook(stream))
                     {
                         var worksheet = workbook.Worksheet(1);
+                        var rows = worksheet.RangeUsed().RowsUsed();
 
-                        // 💡 CHỖ NÀY QUAN TRỌNG: 
-                        // Nếu file Excel của sếp có dòng tiêu đề (Tên, Giá...) thì dùng .Skip(1)
-                        // Nếu sếp điền dữ liệu ngay dòng đầu tiên thì XÓA .Skip(1) đi.
-                        var rows = worksheet.RangeUsed().RowsUsed(); // Tạm thời bỏ Skip(1) để sếp test dòng đầu
-
+                        int rowIndex = 0;
                         foreach (var row in rows)
                         {
+                            rowIndex++;
                             var name = row.Cell(1).GetValue<string>();
-                            if (string.IsNullOrWhiteSpace(name) || name == "Tên Sản Phẩm") continue; // Bỏ qua dòng trống hoặc dòng tiêu đề nếu có
+
+                            // Bỏ qua dòng trống hoặc dòng tiêu đề
+                            if (string.IsNullOrWhiteSpace(name) || name.ToLower().Contains("tên")) continue;
+
+                            // 💡 KIỂM TRA TỪNG CỘT BẰNG TRYGETVALUE (Ngăn chặn Crash)
+                            if (!row.Cell(2).TryGetValue<int>(out int categoryId))
+                            {
+                                errorLogs.Add($"Dòng {rowIndex} ({name}): Cột Danh mục phải là số nguyên!");
+                                continue; // Bỏ qua, chạy dòng tiếp theo
+                            }
+
+                            if (!row.Cell(3).TryGetValue<decimal>(out decimal basePrice))
+                            {
+                                errorLogs.Add($"Dòng {rowIndex} ({name}): Giá tiền bị sai định dạng chữ/số!");
+                                continue; // Bỏ qua, chạy dòng tiếp theo
+                            }
 
                             var product = new Product
                             {
                                 ProductName = name,
-                                CategoryId = row.Cell(2).GetValue<int>(), // ⚠️ Sếp check xem ID 2 có trong bảng Categories chưa nha
-                                BasePrice = row.Cell(3).GetValue<decimal>(),
-                                Description = row.Cell(4).GetValue<string>() ?? "",
+                                CategoryId = categoryId,
+                                BasePrice = basePrice,
+                                Description = row.Cell(4).GetValue<string>() ?? "Imported from Excel",
                                 IsActive = true,
                                 IsDeleted = false,
                                 HasOptions = true,
@@ -109,20 +127,28 @@ namespace NguyenDucHieu_2123110416.Controllers
                             successCount++;
                         }
 
+                        // 💡 Chỉ lưu những dòng đúng
                         if (successCount > 0) await _context.SaveChangesAsync();
                     }
                 }
 
-                return Ok(new { message = $"Hệ thống đã nạp thành công {successCount} món vào kho! ✨" });
+                // 💡 Trả về báo cáo chi tiết
+                return Ok(new
+                {
+                    successCount = successCount,
+                    errorCount = errorLogs.Count,
+                    errors = errorLogs,
+                    message = $"Nạp thành công {successCount} món! Phát hiện {errorLogs.Count} dòng lỗi."
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = "Lỗi dữ liệu: Sếp kiểm tra lại cột CategoryId xem có khớp với danh mục thực tế không nhé! " + ex.Message });
+                return BadRequest(new { error = "Lỗi không xác định khi đọc file: " + ex.Message });
             }
         }
+
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
-        // 💡 ĐỔI TỪ [FromBody] SANG [FromForm] ĐỂ NHẬN ĐƯỢC FILE ẢNH
         public async Task<IActionResult> PutProduct(int id, [FromForm] ProductUpdateDTO dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -144,7 +170,6 @@ namespace NguyenDucHieu_2123110416.Controllers
                 product.UpdatedBy = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
                 product.UpdatedAt = DateTime.Now;
 
-                // 💡 XỬ LÝ CẬP NHẬT ẢNH MỚI (NẾU CÓ)
                 if (dto.ImageFile != null && dto.ImageFile.Length > 0)
                 {
                     string folderPath = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "images", "products");
@@ -155,7 +180,6 @@ namespace NguyenDucHieu_2123110416.Controllers
                     {
                         await dto.ImageFile.CopyToAsync(stream);
                     }
-                    // Cập nhật đường dẫn ảnh mới
                     product.ImageUrl = $"/images/products/{fileName}";
                 }
 
@@ -177,7 +201,6 @@ namespace NguyenDucHieu_2123110416.Controllers
         }
     }
 
-    // 💡 THÊM ImageFile VÀO DTO ĐỂ NHẬN ẢNH TỪ FRONTEND
     public class ProductUpdateDTO
     {
         public int Id { get; set; }
@@ -189,6 +212,6 @@ namespace NguyenDucHieu_2123110416.Controllers
         public decimal SizeXlPrice { get; set; }
         public bool HasOptions { get; set; }
         public bool IsActive { get; set; }
-        public IFormFile? ImageFile { get; set; } 
+        public IFormFile? ImageFile { get; set; }
     }
 }
