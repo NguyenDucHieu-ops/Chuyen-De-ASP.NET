@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 
 const ResetPasswordPage = () => {
@@ -45,7 +45,7 @@ const ResetPasswordPage = () => {
 
       showToast(response.data.message || "Đổi mật khẩu thành công! Tuyệt vời!", "success");
       
-      // Đợi 2s rồi đẩy về trang đăng nhập
+      // Đổi thành công thì token cũ thành rác, bắt buộc phải về trang Login để đăng nhập lại
       setTimeout(() => navigate('/login'), 2000);
 
     } catch (err) {
@@ -55,20 +55,27 @@ const ResetPasswordPage = () => {
     }
   };
 
-  // Nếu không có Token thì chặn lại
+  // ⛔ MÀN HÌNH LỖI: Khi khách không có Token (Đã đổi nút thành Quay Lại)
   if (!emailParam || !tokenParam) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white p-10 rounded-[3rem] shadow-2xl text-center border-4 border-rose-100">
            <div className="text-6xl mb-4">⛔</div>
            <h1 className="text-2xl font-black text-gray-800 uppercase italic">Truy cập không hợp lệ</h1>
-           <p className="text-sm font-bold text-gray-500 mt-2 mb-6">Sếp vui lòng click vào link ở trong Email nhé!</p>
-           <Link to="/login" className="px-6 py-3 bg-gray-900 text-white rounded-xl font-black uppercase text-xs hover:bg-gray-700">Về Đăng Nhập</Link>
+           <p className="text-sm font-bold text-gray-500 mt-2 mb-6">Đường dẫn không có mã xác nhận, sếp vui lòng thử lại nhé!</p>
+           
+           <button 
+             onClick={() => navigate(-1)} 
+             className="px-8 py-3 bg-gray-900 text-white rounded-xl font-black uppercase text-xs hover:bg-gray-700 transition-all active:scale-95"
+           >
+             Quay Lại
+           </button>
         </div>
       </div>
     );
   }
 
+  // ✨ MÀN HÌNH CHÍNH: Form đổi mật khẩu
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative">
       
@@ -89,7 +96,7 @@ const ResetPasswordPage = () => {
           <h1 className="text-3xl font-black text-gray-800 tracking-tighter uppercase italic">
             Tạo Pass Mới
           </h1>
-          <p className="text-xs font-bold text-emerald-600 mt-3 bg-emerald-50 py-2 rounded-xl border border-emerald-100">
+          <p className="text-xs font-bold text-emerald-600 mt-3 bg-emerald-50 py-2 rounded-xl border border-emerald-100 break-all">
             Tài khoản: {emailParam}
           </p>
         </div>
@@ -124,13 +131,13 @@ const ResetPasswordPage = () => {
                 loading ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30'
               }`}
             >
-              {loading ? 'Đang đổi mật khẩu...' : 'Xác Nhận Đổi'}
+              {loading ? 'Đang xử lý...' : 'Xác Nhận Đổi'}
             </button>
 
-            {/* 💡 NÚT QUAY LẠI MỚI THÊM VÀO ĐÂY */}
+            {/* 💡 NÚT QUAY LẠI MỚI THÊM */}
             <button 
               type="button" 
-              onClick={() => navigate(-1)} // Hàm navigate(-1) giúp quay lại trang trước đó (thường là Profile)
+              onClick={() => navigate(-1)}
               disabled={loading}
               className="w-full py-4 rounded-[2rem] text-gray-500 bg-gray-100 hover:bg-gray-200 font-black text-xs uppercase tracking-[0.1em] transition-all active:scale-95"
             >
