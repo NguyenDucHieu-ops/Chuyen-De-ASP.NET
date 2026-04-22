@@ -13,7 +13,7 @@ namespace NguyenDucHieu_2123110416.Controllers
     public class SpinController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private const int SPIN_COST = 50; // Mỗi lần quay tốn 200 điểm
+        private const int SPIN_COST = 50; // Mỗi lần quay tốn 50 điểm (Sếp muốn bao nhiêu thì sửa đây nha)
 
         public SpinController(AppDbContext context)
         {
@@ -38,14 +38,30 @@ namespace NguyenDucHieu_2123110416.Controllers
             var user = await _context.Users.FindAsync(userId);
 
             if (user == null) return Unauthorized();
-            if (user.LoyaltyPoints < SPIN_COST) return BadRequest(new { error = "Sếp không đủ điểm để quay rồi, mua thêm trà sữa tích điểm nha!" });
 
-            // 1. Trừ điểm
-            user.LoyaltyPoints -= SPIN_COST;
+            // 💡 1. CHỖ NÀY NÈ SẾP: Tính tổng điểm từ bảng Giao Dịch (Khớp 100% với Frontend)
+            var totalPoints = await _context.PointTransactions
+                .Where(pt => pt.UserId == userId && pt.IsDeleted == false)
+                .SumAsync(pt => pt.Points);
 
-            // 2. Quay xổ số (Dựa trên Probability)
+            if (totalPoints < SPIN_COST)
+                return BadRequest(new { error = "Sếp không đủ điểm để quay rồi, mua thêm trà sữa tích điểm nha!" });
+
+            // 💡 2. TRỪ ĐIỂM: Lưu 1 dòng âm tiền vào lịch sử
+            var deductTransaction = new PointTransaction
+            {
+                UserId = userId,
+                Points = -SPIN_COST,
+                Description = "Trừ điểm chơi Vòng Quay Nhân Phẩm",
+                CreatedAt = DateTime.Now,
+                IsDeleted = false
+            };
+            _context.PointTransactions.Add(deductTransaction);
+            totalPoints -= SPIN_COST; // Cập nhật số dư sau khi trừ
+
+            // 3. Quay xổ số
             var rewards = await _context.Rewards.Where(r => r.IsActive).ToListAsync();
-            double roll = new Random().NextDouble(); // Sinh số ngẫu nhiên từ 0.0 -> 1.0
+            double roll = new Random().NextDouble();
             double cumulative = 0.0;
             Reward? wonReward = null;
 
@@ -59,25 +75,34 @@ namespace NguyenDucHieu_2123110416.Controllers
                 }
             }
 
-            // Dự phòng nếu lỗi làm tròn số
             if (wonReward == null) wonReward = rewards.Last();
 
-            // 3. Trao quà
+            // 4. Trao quà
             string extraMessage = "";
             if (wonReward.Type == "POINTS")
             {
-                user.LoyaltyPoints += wonReward.Value;
+                // 💡 CỘNG ĐIỂM: Lưu 1 dòng dương tiền vào lịch sử
+                var addTransaction = new PointTransaction
+                {
+                    UserId = userId,
+                    Points = (int)wonReward.Value,
+                    Description = $"Trúng thưởng từ Vòng Quay: {wonReward.Name}",
+                    CreatedAt = DateTime.Now,
+                    IsDeleted = false
+                };
+                _context.PointTransactions.Add(addTransaction);
+                totalPoints += (int)wonReward.Value; // Cập nhật số dư
+
                 extraMessage = $"Đã cộng thêm {wonReward.Value} điểm vào tài khoản.";
             }
             else if (wonReward.Type == "VOUCHER")
             {
-                // Tự sinh mã voucher random cho khách xài
                 string newCode = "LUCK" + new Random().Next(1000, 9999).ToString();
                 var voucher = new Voucher
                 {
                     Code = newCode,
                     DiscountAmount = wonReward.Value,
-                    ExpiryDate = DateTime.Now.AddDays(7), // Hạn xài 7 ngày
+                    ExpiryDate = DateTime.Now.AddDays(7),
                     IsActive = true
                 };
                 _context.Vouchers.Add(voucher);
@@ -91,7 +116,7 @@ namespace NguyenDucHieu_2123110416.Controllers
                 rewardId = wonReward.Id,
                 rewardName = wonReward.Name,
                 message = extraMessage,
-                remainingPoints = user.LoyaltyPoints
+                remainingPoints = totalPoints // Trả về số điểm thật
             });
         }
     }
