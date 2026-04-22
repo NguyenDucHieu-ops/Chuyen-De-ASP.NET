@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -16,6 +16,11 @@ const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ fullName: '', email: '', phone: '', address: '' });
   const [loadingUpdate, setLoadingUpdate] = useState(false);
+
+  // --- STATE ĐỔI MẬT KHẨU (MỚI) ---
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [loadingPassword, setLoadingPassword] = useState(false);
 
   // --- STATE QUẢN LÝ REVIEW ---
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -44,7 +49,7 @@ const ProfilePage = () => {
       setUser(uRes.data);
       setFormData({
         fullName: uRes.data.fullName || '', 
-        email: uRes.data.email || '', // 💡 Đã thêm email vào formData
+        email: uRes.data.email || '', 
         phone: uRes.data.phone || '', 
         address: uRes.data.address || ''
       });
@@ -101,9 +106,29 @@ const ProfilePage = () => {
       setIsEditing(false); 
       showToast('Cập nhật hồ sơ thành công! ✨');
     } catch (err) { 
-      // 💡 Bắt lỗi từ backend (ví dụ: email đã tồn tại)
       showToast(err.response?.data?.error || 'Lỗi cập nhật, sếp kiểm tra lại nhé!', 'error'); 
     } finally { setLoadingUpdate(false); }
+  };
+
+  // --- XỬ LÝ ĐỔI MẬT KHẨU TẠI CHỖ ---
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (passwordData.newPassword.length < 6) return showToast("Mật khẩu mới phải từ 6 ký tự!", "error");
+    if (passwordData.newPassword !== passwordData.confirmPassword) return showToast("Mật khẩu nhập lại không khớp!", "error");
+
+    setLoadingPassword(true);
+    try {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/Users/change-password`, passwordData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showToast("Đổi mật khẩu thành công! Tuyệt vời sếp ơi!", "success");
+      setShowPasswordModal(false);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      showToast(err.response?.data?.error || "Mật khẩu hiện tại không đúng!", "error");
+    } finally {
+      setLoadingPassword(false);
+    }
   };
 
   // --- XỬ LÝ GỬI ĐÁNH GIÁ ---
@@ -318,12 +343,13 @@ const ProfilePage = () => {
                 </h3>
                 
                 <div className="flex gap-3">
-                   <Link 
-                      to="/forgot-password" 
+                   {/* 💡 NÚT ĐỔI MẬT KHẨU MỞ MODAL */}
+                   <button 
+                      onClick={() => setShowPasswordModal(true)} 
                       className="bg-rose-50 text-rose-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all border border-rose-100"
                    >
                       Đổi mật khẩu 🔒
-                   </Link>
+                   </button>
 
                    {!isEditing && (
                      <button onClick={() => setIsEditing(true)} className="bg-indigo-50 text-indigo-600 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">
@@ -344,7 +370,6 @@ const ProfilePage = () => {
                     <input type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} disabled={!isEditing} className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-6 py-5 font-black text-gray-800 outline-none transition-all disabled:opacity-50" required />
                   </div>
 
-                  {/* 💡 Ô EMAIL BÂY GIỜ ĐÃ CÓ THỂ CHỈNH SỬA */}
                   <div className="space-y-3 md:col-span-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Email đăng nhập</label>
                     <input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} disabled={!isEditing} className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-6 py-5 font-black text-gray-800 outline-none transition-all disabled:opacity-50" required />
@@ -376,6 +401,34 @@ const ProfilePage = () => {
           )}
         </div>
       </div>
+
+      {/* --- MODAL ĐỔI MẬT KHẨU TẠI CHỖ --- */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-gray-900/90 backdrop-blur-md z-[150] flex items-center justify-center p-6">
+          <div className="bg-white rounded-[3rem] w-full max-w-md p-10 shadow-2xl animate-fadeIn relative">
+            <button onClick={() => setShowPasswordModal(false)} className="absolute top-8 right-8 text-3xl font-black text-gray-300 hover:text-rose-500 transition-colors">×</button>
+            <h2 className="text-2xl font-black mb-8 uppercase italic text-gray-800">Đổi Mật Khẩu 🔒</h2>
+            
+            <form onSubmit={handleChangePassword} className="space-y-6">
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-2">Mật khẩu hiện tại</label>
+                <input type="password" required value={passwordData.currentPassword} onChange={e => setPasswordData({...passwordData, currentPassword: e.target.value})} className="w-full bg-gray-50 border-2 border-transparent focus:border-rose-500 rounded-2xl px-6 py-4 font-black text-gray-800 outline-none transition-all" placeholder="••••••••" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-2">Mật khẩu mới</label>
+                <input type="password" required minLength="6" value={passwordData.newPassword} onChange={e => setPasswordData({...passwordData, newPassword: e.target.value})} className="w-full bg-gray-50 border-2 border-transparent focus:border-rose-500 rounded-2xl px-6 py-4 font-black text-gray-800 outline-none transition-all" placeholder="••••••••" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-2">Xác nhận mật khẩu mới</label>
+                <input type="password" required minLength="6" value={passwordData.confirmPassword} onChange={e => setPasswordData({...passwordData, confirmPassword: e.target.value})} className="w-full bg-gray-50 border-2 border-transparent focus:border-rose-500 rounded-2xl px-6 py-4 font-black text-gray-800 outline-none transition-all" placeholder="••••••••" />
+              </div>
+              <button type="submit" disabled={loadingPassword} className="w-full py-5 bg-rose-500 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-lg hover:bg-rose-600 disabled:opacity-50 transition-all active:scale-95">
+                {loadingPassword ? "Đang xử lý..." : "Cập nhật mật khẩu"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* --- MODAL REVIEW --- */}
       {showReviewModal && (
