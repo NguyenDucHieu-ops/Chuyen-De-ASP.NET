@@ -164,6 +164,17 @@ namespace NguyenDucHieu_2123110416.Controllers
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return NotFound("Không tìm thấy người dùng");
 
+            // 💡 KIỂM TRA XEM EMAIL MỚI CÓ BỊ TRÙNG VỚI NGƯỜI KHÁC KHÔNG
+            if (user.Email != request.Email)
+            {
+                bool emailExists = await _context.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId);
+                if (emailExists)
+                {
+                    return BadRequest(new { error = "Email này đã được người khác sử dụng!" });
+                }
+                user.Email = request.Email;
+            }
+
             user.FullName = request.FullName;
             user.PhoneNumber = request.Phone;
             user.Address = request.Address; // 💡 Cập nhật địa chỉ thực vào DB
@@ -209,6 +220,11 @@ namespace NguyenDucHieu_2123110416.Controllers
             [Required(ErrorMessage = "Không được để trống họ tên!")]
             [MaxLength(50, ErrorMessage = "Tên quá dài!")]
             public string FullName { get; set; } = string.Empty;
+
+            // 💡 ĐÃ THÊM TRƯỜNG EMAIL VÀO ĐÂY ĐỂ BACKEND NHẬN DỮ LIỆU
+            [Required(ErrorMessage = "Không được để trống email!")]
+            [EmailAddress(ErrorMessage = "Định dạng email không hợp lệ!")]
+            public string Email { get; set; } = string.Empty;
 
             [Required(ErrorMessage = "Không được để trống số điện thoại!")]
             [RegularExpression(@"^(0[3|5|7|8|9])+([0-9]{8})$", ErrorMessage = "Số điện thoại không hợp lệ!")]

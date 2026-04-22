@@ -14,7 +14,7 @@ const ProfilePage = () => {
   const [user, setUser] = useState({ fullName: '', email: '', phone: '', address: '', currentPoints: 0 });
   
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ fullName: '', phone: '', address: '' });
+  const [formData, setFormData] = useState({ fullName: '', email: '', phone: '', address: '' });
   const [loadingUpdate, setLoadingUpdate] = useState(false);
 
   // --- STATE QUẢN LÝ REVIEW ---
@@ -44,6 +44,7 @@ const ProfilePage = () => {
       setUser(uRes.data);
       setFormData({
         fullName: uRes.data.fullName || '', 
+        email: uRes.data.email || '', // 💡 Đã thêm email vào formData
         phone: uRes.data.phone || '', 
         address: uRes.data.address || ''
       });
@@ -99,8 +100,9 @@ const ProfilePage = () => {
       setUser({ ...user, ...formData });
       setIsEditing(false); 
       showToast('Cập nhật hồ sơ thành công! ✨');
-    } catch { 
-      showToast('Lỗi cập nhật, sếp kiểm tra lại backend nhé!', 'error'); 
+    } catch (err) { 
+      // 💡 Bắt lỗi từ backend (ví dụ: email đã tồn tại)
+      showToast(err.response?.data?.error || 'Lỗi cập nhật, sếp kiểm tra lại nhé!', 'error'); 
     } finally { setLoadingUpdate(false); }
   };
 
@@ -225,7 +227,6 @@ const ProfilePage = () => {
                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 italic">
                             🗓️ {new Date(order.createdAt).toLocaleString('vi-VN')}
                           </p>
-                          {/* 💡 FIX 1: HIỂN THỊ TÊN MÓN ĂN TẠI ĐÂY */}
                           <p className="text-sm font-bold text-indigo-600 mt-2 line-clamp-2">
                              {order.orderDetails?.map(item => item.productName).join(', ') || 'Đang tải món ăn...'}
                           </p>
@@ -317,7 +318,6 @@ const ProfilePage = () => {
                 </h3>
                 
                 <div className="flex gap-3">
-                   {/* 💡 FIX 3: NÚT ĐỔI MẬT KHẨU LINK SANG TRANG FORGOT PASSWORD */}
                    <Link 
                       to="/forgot-password" 
                       className="bg-rose-50 text-rose-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all border border-rose-100"
@@ -344,7 +344,12 @@ const ProfilePage = () => {
                     <input type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} disabled={!isEditing} className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-6 py-5 font-black text-gray-800 outline-none transition-all disabled:opacity-50" required />
                   </div>
 
-                  {/* 💡 FIX 2: THÊM Ô ĐỊA CHỈ VÀO FORM */}
+                  {/* 💡 Ô EMAIL BÂY GIỜ ĐÃ CÓ THỂ CHỈNH SỬA */}
+                  <div className="space-y-3 md:col-span-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Email đăng nhập</label>
+                    <input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} disabled={!isEditing} className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-6 py-5 font-black text-gray-800 outline-none transition-all disabled:opacity-50" required />
+                  </div>
+
                   <div className="space-y-3 md:col-span-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Địa chỉ giao hàng mặc định</label>
                     <textarea 
@@ -357,15 +362,10 @@ const ProfilePage = () => {
                     />
                   </div>
                 </div>
-
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Email đăng nhập</label>
-                  <input type="email" value={user.email} disabled className="w-full bg-gray-100 rounded-2xl px-6 py-5 font-black text-gray-400 cursor-not-allowed" />
-                </div>
                 
                 {isEditing && (
                   <div className="pt-6 flex gap-4">
-                    <button type="button" onClick={() => { setIsEditing(false); setFormData({fullName: user.fullName, phone: user.phone, address: user.address}); }} className="flex-1 py-5 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-200">Hủy bỏ</button>
+                    <button type="button" onClick={() => { setIsEditing(false); setFormData({fullName: user.fullName, email: user.email, phone: user.phone, address: user.address}); }} className="flex-1 py-5 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-200">Hủy bỏ</button>
                     <button type="submit" disabled={loadingUpdate} className="flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-200 uppercase text-[10px] tracking-widest active:scale-95 transition-all">
                       {loadingUpdate ? 'Đang lưu...' : 'Lưu thay đổi 💾'}
                     </button>

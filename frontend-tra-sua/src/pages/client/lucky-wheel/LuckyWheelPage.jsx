@@ -27,7 +27,7 @@ const LuckyWheelPage = () => {
         ]);
         setCurrentPoints(profileRes.data.currentPoints || 0);
         setSpinInfo(infoRes.data);
-      } catch  {
+      } catch {
         showToast("Có lỗi khi tải dữ liệu vòng quay!", "error");
       } finally {
         setLoading(false);
@@ -57,9 +57,9 @@ const LuckyWheelPage = () => {
       
       if (rewardIndex === -1) throw new Error("Lỗi đồng bộ quà");
 
-      // 💡 HIỆU ỨNG XOAY: Quay 5 vòng + lùi lại đúng vị trí múi quà
-      // Kim chỉ ở đỉnh (12 giờ), nên ta trừ đi góc của món quà
-      const extraSpins = 360 * 8; 
+      // 💡 HIỆU ỨNG XOAY MỚI: Căn chuẩn tâm mũi tên
+      const extraSpins = 360 * 6; // Quay 6 vòng
+      // Chú ý: Ở hệ conic-gradient, góc 0 độ bắt đầu từ đỉnh (12h)
       const targetAngle = extraSpins - (rewardIndex * segmentAngle) - (segmentAngle / 2); 
 
       setRotationResult(targetAngle);
@@ -72,7 +72,7 @@ const LuckyWheelPage = () => {
         const channel = new BroadcastChannel('hieu_store_points');
         channel.postMessage('update_points');
         channel.close();
-      }, 4000);
+      }, 4500);
 
     } catch (err) {
       setIsSpinning(false);
@@ -83,9 +83,25 @@ const LuckyWheelPage = () => {
   if (loading) return <div className="text-center p-20 font-black italic animate-pulse">ĐANG KẾT NỐI VỚI VŨ TRỤ...</div>;
   if (!token) return <div className="text-center p-20 font-black text-rose-500 uppercase italic">Vui lòng đăng nhập để quay thưởng sếp ơi!</div>;
 
-  const colors = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#8B5CF6'];
+  // Bảng màu rực rỡ
+  const colors = ['#FF595E', '#FFCA3A', '#8AC926', '#1982C4', '#6A4C93', '#FF924C'];
   const numSegments = spinInfo?.rewards.length || 4;
   const segmentAngle = 360 / numSegments;
+
+  // 💡 TẠO CONIC GRADIENT ĐỂ CHIA MÚI TỰ ĐỘNG CHUẨN XÁC
+  const generateConicGradient = () => {
+    let gradientParts = [];
+    let currentAngle = 0;
+    
+    spinInfo?.rewards.forEach((_, idx) => {
+      const color = colors[idx % colors.length];
+      const nextAngle = currentAngle + segmentAngle;
+      gradientParts.push(`${color} ${currentAngle}deg ${nextAngle}deg`);
+      currentAngle = nextAngle;
+    });
+    
+    return `conic-gradient(${gradientParts.join(', ')})`;
+  };
 
   return (
     <div className="min-h-[90vh] bg-gray-50 flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -112,53 +128,58 @@ const LuckyWheelPage = () => {
       </div>
 
       {/* 🎡 KHUNG VÒNG QUAY */}
-      <div className="relative w-[340px] h-[340px] md:w-[400px] md:h-[400px] transition-all duration-500">
+      <div className="relative w-[340px] h-[340px] md:w-[420px] md:h-[420px] transition-all duration-500 mt-4">
         
-        {/* KIM CHỈ (Màu đỏ cho nổi) */}
-        <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[15px] border-r-[15px] border-t-[35px] border-l-transparent border-r-transparent border-t-rose-600 z-30 drop-shadow-lg"></div>
+        {/* KIM CHỈ (Màu đỏ chói) */}
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[20px] border-r-[20px] border-t-[40px] border-l-transparent border-r-transparent border-t-rose-600 z-30 drop-shadow-[0_4px_4px_rgba(0,0,0,0.3)]"></div>
         
         {/* VÒNG TRÒN XOAY */}
         <div 
-          className="w-full h-full rounded-full border-[10px] border-gray-900 overflow-hidden relative shadow-[0_0_80px_rgba(79,70,229,0.2)] bg-gray-900"
+          className="w-full h-full rounded-full border-[12px] border-gray-900 overflow-hidden relative shadow-[0_10px_50px_rgba(0,0,0,0.15)]"
           style={{ 
+            background: generateConicGradient(), // Sử dụng Conic Gradient
             transform: `rotate(${rotationResult}deg)`, 
-            transition: 'transform 4s cubic-bezier(0.1, 0.7, 0.1, 1)' 
+            transition: 'transform 4.5s cubic-bezier(0.1, 0.7, 0.1, 1)' 
           }}
         >
-          {spinInfo?.rewards.map((reward, idx) => (
-            <div 
-              key={reward.id} 
-              className="absolute top-0 right-0 w-1/2 h-1/2 origin-bottom-left"
-              style={{
-                backgroundColor: colors[idx % colors.length],
-                // 💡 Tăng scale lên 1.1 để xóa các khe hở trắng giữa các múi
-                transform: `rotate(${idx * segmentAngle}deg) skewY(${90 - segmentAngle}deg) scale(1.1)`
-              }}
-            >
+          {/* Đặt chữ vào các múi */}
+          {spinInfo?.rewards.map((reward, idx) => {
+            // Tính toán vị trí xoay của từng dòng chữ (giữa múi)
+            const textRotateAngle = (idx * segmentAngle) + (segmentAngle / 2);
+            
+            return (
               <div 
-                className="absolute bottom-0 left-0 w-[200px] text-center font-black text-white uppercase text-[9px] md:text-[10px] tracking-tighter leading-tight"
+                key={reward.id} 
+                className="absolute top-0 left-0 w-full h-full flex justify-center pt-8"
                 style={{
-                  // 💡 Đẩy chữ ra xa tâm hơn để không bị thu nhỏ
-                  transform: `skewY(-${90 - segmentAngle}deg) rotate(${segmentAngle / 2}deg) translate(40px, -70px)`,
-                  width: '160px'
+                  transform: `rotate(${textRotateAngle}deg)`,
+                  transformOrigin: '50% 50%' // Tâm xoay ở giữa
                 }}
               >
-                {reward.name}
+                <span 
+                  className="font-black text-white uppercase text-[11px] md:text-xs tracking-tighter drop-shadow-md z-10 w-24 text-center"
+                  style={{
+                    // Ép chữ lộn lại nếu nó nằm ở nửa dưới vòng tròn (để dễ đọc)
+                    transform: textRotateAngle > 90 && textRotateAngle < 270 ? 'rotate(180deg)' : 'none'
+                  }}
+                >
+                  {reward.name}
+                </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* TRỤC GIỮA */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white rounded-full border-4 border-gray-900 z-20 flex items-center justify-center shadow-2xl">
-          <span className="text-2xl animate-pulse">🎁</span>
+        {/* TRỤC GIỮA (Lớn hơn, đẹp hơn) */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-white rounded-full border-[6px] border-gray-900 z-20 flex items-center justify-center shadow-inner">
+          <span className="text-3xl animate-pulse drop-shadow-md">🎁</span>
         </div>
       </div>
 
       <button 
         onClick={handleSpin}
         disabled={isSpinning || currentPoints < spinInfo?.spinCost}
-        className={`mt-10 px-16 py-6 rounded-[2.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-90 ${
+        className={`mt-12 px-16 py-6 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-90 ${
           isSpinning || currentPoints < spinInfo?.spinCost
           ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
           : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-indigo-500/40'
@@ -167,9 +188,10 @@ const LuckyWheelPage = () => {
         {isSpinning ? '🎡 Vận may đang tới...' : '🚀 QUAY NGAY'}
       </button>
 
+      {/* HIỆN KẾT QUẢ SAU KHI QUAY XONG */}
       {rewardMessage && (
-        <div className="mt-8 p-6 bg-white border-4 border-indigo-50 rounded-[2.5rem] shadow-xl max-w-xs text-center animate-scaleIn">
-          <p className="font-black text-gray-800 text-sm italic uppercase leading-relaxed">{rewardMessage}</p>
+        <div className="mt-8 p-6 bg-white border-4 border-indigo-50 rounded-[2.5rem] shadow-xl max-w-sm text-center animate-scaleIn">
+          <p className="font-black text-gray-800 text-sm italic uppercase leading-relaxed whitespace-pre-line">{rewardMessage}</p>
         </div>
       )}
     </div>
