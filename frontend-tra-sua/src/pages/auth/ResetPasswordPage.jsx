@@ -6,7 +6,7 @@ const ResetPasswordPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
-  // Tự động lấy Email và Token từ trên thanh địa chỉ URL
+  // Lấy Email và Token từ URL
   const emailParam = searchParams.get('email');
   const tokenParam = searchParams.get('token');
 
@@ -55,7 +55,7 @@ const ResetPasswordPage = () => {
     }
   };
 
-  // Nếu người dùng lỡ tự gõ /reset-password mà không có mã token thì chặn lại
+  // Nếu không có Token thì chặn lại
   if (!emailParam || !tokenParam) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -117,14 +117,26 @@ const ResetPasswordPage = () => {
             />
           </div>
 
-          <button 
-            type="submit" disabled={loading} 
-            className={`w-full py-5 rounded-[2rem] text-white font-black text-sm uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 ${
-              loading ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30'
-            }`}
-          >
-            {loading ? 'Đang đổi mật khẩu...' : 'Xác Nhận Đổi'}
-          </button>
+          <div className="space-y-3 mt-8">
+            <button 
+              type="submit" disabled={loading} 
+              className={`w-full py-5 rounded-[2rem] text-white font-black text-sm uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 ${
+                loading ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30'
+              }`}
+            >
+              {loading ? 'Đang đổi mật khẩu...' : 'Xác Nhận Đổi'}
+            </button>
+
+            {/* 💡 NÚT QUAY LẠI MỚI THÊM VÀO ĐÂY */}
+            <button 
+              type="button" 
+              onClick={() => navigate(-1)} // Hàm navigate(-1) giúp quay lại trang trước đó (thường là Profile)
+              disabled={loading}
+              className="w-full py-4 rounded-[2rem] text-gray-500 bg-gray-100 hover:bg-gray-200 font-black text-xs uppercase tracking-[0.1em] transition-all active:scale-95"
+            >
+              Quay lại 
+            </button>
+          </div>
         </form>
       </div>
     </div>
