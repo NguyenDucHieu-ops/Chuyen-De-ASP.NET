@@ -134,6 +134,7 @@ const ProductManager = () => {
 
   const handleSave = async () => {
     if (!validateForm()) return;
+    
     const isSnack = parseInt(newProduct.categoryId) === 3; 
     const mPrice = parseFloat(sizes.M.price) || 0;
     const lPrice = (!isSnack && sizes.L.active) ? (parseFloat(sizes.L.price) || 0) : 0;
@@ -143,32 +144,45 @@ const ProductManager = () => {
     const xlUpPrice = xlPrice > 0 ? (xlPrice - mPrice) : 0;
 
     const formData = new FormData();
-    formData.append('ProductName', newProduct.productName);
-    formData.append('CategoryId', parseInt(newProduct.categoryId));
-    formData.append('Description', newProduct.description);
-    formData.append('IsActive', newProduct.isActive);
-    formData.append('BasePrice', mPrice);
-    formData.append('SizeUpPrice', upPrice);
-    formData.append('SizeXlPrice', xlUpPrice); 
-    formData.append('HasOptions', !isSnack); 
+    // 💡 Ép kiểu chuẩn để Backend không bao giờ báo 400
+    formData.append('ProductName', newProduct.productName.trim());
+    formData.append('CategoryId', String(newProduct.categoryId));
+    formData.append('Description', newProduct.description || "Chưa có mô tả");
+    formData.append('IsActive', String(newProduct.isActive));
+    formData.append('BasePrice', String(mPrice));
+    formData.append('SizeUpPrice', String(upPrice));
+    formData.append('SizeXlPrice', String(xlUpPrice)); 
+    formData.append('HasOptions', String(!isSnack)); 
     
-    if (imageFile) formData.append('ImageFile', imageFile);
+    if (imageFile) {
+      formData.append('ImageFile', imageFile);
+    }
 
     try {
-      // 💡 ĐÃ SỬA: Xóa cái 'Content-Type' đi cho cả lúc Thêm mới và Sửa
+      showSystemNotify("Đang tải dữ liệu lên máy chủ... ⏳", "success"); // Báo cho user biết là đang chạy
+      
       if (editingId) {
-        formData.append('Id', parseInt(editingId));
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${editingId}`, formData, { headers });
+        formData.append('Id', String(editingId));
+        await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${editingId}`, formData, { 
+            headers: headers 
+        });
         showSystemNotify("Cập nhật thành công! ✨");
       } else {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/Products`, formData, { headers });
-        showSystemNotify("Đã thêm món mới! 🎉");
+        // Kiểm tra ảnh khi thêm mới ngay tại Frontend cho chắc
+        if(!imageFile) {
+            showSystemNotify("Sếp ơi chưa chọn ảnh!", "error");
+            return;
+        }
+        await axios.post(`${import.meta.env.VITE_API_URL}/api/Products`, formData, { 
+            headers: headers 
+        });
+        showSystemNotify("Đã thêm món mới thành công! 🎉");
       }
       setIsModalOpen(false);
       fetchProducts();
     } catch (err) { 
-      console.error(err); 
-      showSystemNotify("Lỗi 400: Sếp check lại Backend nhé!", "error"); 
+      console.error("Lỗi chi tiết:", err.response?.data);
+      showSystemNotify("Lỗi: Sếp kiểm tra lại các ô nhập liệu nhé!", "error"); 
     }
   };
 

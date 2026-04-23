@@ -17,6 +17,6 @@ namespace NguyenDucHieu_2123110416.DTOs
         public bool HasOptions { get; set; }
 
         [Required(ErrorMessage = "Vui lòng chọn hình ảnh sản phẩm!")]
-        public IFormFile ImageFile { get; set; } = null!;
+        public IFormFile? ImageFile { get; set; }
     }
 }
