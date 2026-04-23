@@ -44,9 +44,6 @@ const ProductManager = () => {
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  // =========================================================
-  // 🚀 XỬ LÝ IMPORT EXCEL (HIỂN THỊ CHI TIẾT LỖI)
-  // =========================================================
   const handleImportExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -57,19 +54,17 @@ const ProductManager = () => {
     showSystemNotify("Đang xử lý dữ liệu Excel...", "success");
 
     try {
+      // 💡 ĐÃ SỬA: Bỏ cái 'Content-Type' đi để Axios tự lo vụ Boundary
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/Products/import`, formData, {
-        headers: { ...headers, 'Content-Type': 'multipart/form-data' }
+        headers: headers 
       });
 
       const data = res.data;
       
       if (data.errorCount > 0) {
-        // Có lỗi nhưng vẫn nạp thành công 1 phần
         showSystemNotify(data.message, "error");
-        // Hiện popup danh sách các dòng lỗi cho sếp dễ sửa
         alert(`⚠️ PHÁT HIỆN DỮ LIỆU LỖI TRONG FILE:\n\n${data.errors.join('\n')}\n\nLưu ý: Các dòng đúng đã được nạp thành công!`);
       } else {
-        // Đúng 100%
         showSystemNotify(data.message, "success");
       }
 
@@ -91,17 +86,24 @@ const ProductManager = () => {
     return Object.keys(tempErrors).length === 0;
   };
 
+  // 💡 ĐÃ SỬA: Ép nó dùng FormData thay vì JSON để khớp với [FromForm] của C#
   const handleToggleStatus = async (product) => {
     try {
-      const updated = { 
-        id: product.id, productName: product.productName, categoryId: product.categoryId,
-        basePrice: product.basePrice, sizeUpPrice: product.sizeUpPrice, sizeXlPrice: product.sizeXlPrice,
-        hasOptions: product.hasOptions, isActive: !product.isActive 
-      };
-      await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${product.id}`, updated, { headers });
+      const formData = new FormData();
+      formData.append('Id', product.id);
+      formData.append('ProductName', product.productName);
+      formData.append('CategoryId', product.categoryId);
+      formData.append('Description', product.description || '');
+      formData.append('BasePrice', product.basePrice);
+      formData.append('SizeUpPrice', product.sizeUpPrice);
+      formData.append('SizeXlPrice', product.sizeXlPrice);
+      formData.append('HasOptions', product.hasOptions);
+      formData.append('IsActive', !product.isActive); // Đảo trạng thái ở đây
+
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${product.id}`, formData, { headers });
       showSystemNotify(`Đã cập nhật trạng thái món!`);
       fetchProducts();
-    } catch (err) { console.error(err); showSystemNotify("Lỗi cập nhật!", "error"); }
+    } catch (err) { console.error(err); showSystemNotify("Lỗi cập nhật trạng thái!", "error"); }
   };
 
   const handleDelete = async (id) => {
@@ -153,17 +155,21 @@ const ProductManager = () => {
     if (imageFile) formData.append('ImageFile', imageFile);
 
     try {
+      // 💡 ĐÃ SỬA: Xóa cái 'Content-Type' đi cho cả lúc Thêm mới và Sửa
       if (editingId) {
         formData.append('Id', parseInt(editingId));
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${editingId}`, formData, { headers: { ...headers, 'Content-Type': 'multipart/form-data' } });
+        await axios.put(`${import.meta.env.VITE_API_URL}/api/Products/${editingId}`, formData, { headers });
         showSystemNotify("Cập nhật thành công! ✨");
       } else {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/Products`, formData, { headers: { ...headers, 'Content-Type': 'multipart/form-data' } });
+        await axios.post(`${import.meta.env.VITE_API_URL}/api/Products`, formData, { headers });
         showSystemNotify("Đã thêm món mới! 🎉");
       }
       setIsModalOpen(false);
       fetchProducts();
-    } catch (err) { console.error(err); showSystemNotify("Lỗi 400: Sếp check lại Backend nhé!", "error"); }
+    } catch (err) { 
+      console.error(err); 
+      showSystemNotify("Lỗi 400: Sếp check lại Backend nhé!", "error"); 
+    }
   };
 
   return (
