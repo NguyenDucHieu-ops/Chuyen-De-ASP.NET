@@ -26,18 +26,19 @@ const ContactManager = () => {
   const handleSendReply = async (e) => {
     e.preventDefault();
     try {
-      // Backend của sếp cần có API: PUT /api/Contacts/{id}/reply
-      await axios.put(`${import.meta.env.VITE_API_URL}/api/Contacts/${selectedContact.id}/reply`, 
-        JSON.stringify(replyText), 
-        { headers: { ...headers, 'Content-Type': 'application/json' } }
+      // 💡 Đã sửa lại thành POST và gửi đúng object { replyMessage: ... }
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/Contacts/${selectedContact.id}/reply`, 
+        { replyMessage: replyText }, 
+        { headers: headers }
       );
       
       alert("✨ Đã gửi phản hồi thành công!");
       setIsReplyModalOpen(false);
       setReplyText('');
       fetchContacts(); // Load lại để hiện status "Đã trả lời"
-    } catch {
+    } catch (err) {
       alert("❌ Lỗi gửi phản hồi, sếp check lại Backend nhé!");
+      console.error(err);
     }
   };
 
@@ -74,8 +75,9 @@ const ContactManager = () => {
                   <div className="flex items-center gap-4 flex-wrap">
                      <span className="bg-indigo-600 text-white px-4 py-1.5 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-indigo-100">{c.email}</span>
                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{new Date(c.createdAt).toLocaleString('vi-VN')}</span>
-                     {/* Hiện Badge nếu đã trả lời */}
-                     {c.replyContent && (
+                     
+                     {/* 💡 Sửa thành c.isReplied */}
+                     {c.isReplied && (
                        <span className="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase">Đã phản hồi ✅</span>
                      )}
                   </div>
@@ -87,17 +89,18 @@ const ContactManager = () => {
                     </p>
                   </div>
 
-                  {/* Hiện nội dung đã trả lời nếu có */}
-                  {c.replyContent && (
+                  {/* 💡 Sửa thành c.replyMessage */}
+                  {c.isReplied && (
                     <div className="bg-gray-50 p-5 rounded-2xl border-l-4 border-emerald-400">
                        <p className="text-[10px] font-black text-emerald-600 uppercase mb-2">Phản hồi của Admin:</p>
-                       <p className="text-gray-600 font-medium italic">"{c.replyContent}"</p>
+                       <p className="text-gray-600 font-medium italic">"{c.replyMessage}"</p>
                     </div>
                   )}
                </div>
 
                <div className="flex gap-2 shrink-0">
-                  {!c.replyContent && (
+                  {/* 💡 Đổi điều kiện kiểm tra nút Trả Lời */}
+                  {!c.isReplied && (
                     <button 
                       onClick={() => { setSelectedContact(c); setIsReplyModalOpen(true); }}
                       className="px-6 py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-[10px] uppercase hover:bg-indigo-600 hover:text-white transition-all shadow-sm"

@@ -33,7 +33,7 @@ const ContactPage = () => {
       });
       setHistory(res.data);
     } catch (err) {
-      console.error("Chưa có API lấy lịch sử hoặc lỗi", err);
+      console.error("Lỗi lấy lịch sử", err);
     } finally {
       setLoadingHistory(false);
     }
@@ -43,14 +43,13 @@ const ContactPage = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      // Gửi token đi để backend biết ai đang gửi
       const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
       await axios.post(`${import.meta.env.VITE_API_URL}/api/Contacts`, form, config);
       
       alert("✅ Cảm ơn bạn đã góp ý! Lời nhắn đã được ghi nhận.");
-      setForm(prev => ({ ...prev, subject: '', message: '' })); // Chỉ xóa chủ đề và lời nhắn, giữ lại tên/email
+      setForm(prev => ({ ...prev, subject: '', message: '' })); 
       
-      if (token) fetchHistory(); // Load lại lịch sử ngay lập tức
+      if (token) fetchHistory(); 
     } catch (err) { 
       console.error(err);
       alert("❌ Có lỗi xảy ra khi gửi tin, vui lòng kiểm tra lại!"); 
@@ -92,7 +91,7 @@ const ContactPage = () => {
               </div>
             </div>
             <div>
-              <input type="text" placeholder="Chủ đề (VD: Giao hàng chậm, Sản phẩm lỗi...)" required value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
+              <input type="text" placeholder="Chủ đề (VD: Giao hàng chậm...)" required value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
             </div>
             <div>
               <textarea placeholder="Chi tiết lời nhắn gửi đến HieuStore..." required rows="5" value={form.message} onChange={e => setForm({...form, message: e.target.value})} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none" />
@@ -103,7 +102,7 @@ const ContactPage = () => {
           </form>
         </div>
 
-        {/* CỘT PHẢI: LỊCH SỬ LIÊN HỆ & CÂU TRẢ LỜI CỦA ADMIN */}
+        {/* CỘT PHẢI: LỊCH SỬ LIÊN HỆ */}
         <div className="lg:col-span-7 bg-white p-8 md:p-10 rounded-[3rem] shadow-sm border border-gray-100">
           <h2 className="text-2xl font-black text-gray-800 mb-8 flex items-center gap-3">
             <span className="w-2 h-8 bg-indigo-600 rounded-full inline-block"></span>
@@ -135,10 +134,11 @@ const ContactPage = () => {
                         🕒 {new Date(item.createdAt).toLocaleString('vi-VN')}
                       </p>
                     </div>
+                    {/* 💡 Sửa thành item.isReplied */}
                     <span className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider whitespace-nowrap ${
-                      item.isRead ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                      item.isReplied ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                     }`}>
-                      {item.isRead ? '✓ Đã phản hồi' : '⏳ Chờ xử lý'}
+                      {item.isReplied ? '✓ Đã phản hồi' : '⏳ Chờ xử lý'}
                     </span>
                   </div>
                   
@@ -148,14 +148,14 @@ const ContactPage = () => {
                     {item.message}
                   </div>
 
-                  {/* Phần Admin trả lời (Nếu C# của bạn có thêm cột Reply/AdminResponse) */}
-                  {item.isRead && (
+                  {/* 💡 Sửa thành item.isReplied và hiện item.replyMessage */}
+                  {item.isReplied && (
                     <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 text-sm text-indigo-900 relative">
                       <div className="absolute -left-2 top-4 w-4 h-4 bg-indigo-50 rotate-45 border-l border-b border-indigo-100"></div>
                       <span className="font-black text-indigo-700 block mb-1 flex items-center gap-2">
                         <span className="text-lg">🧋</span> Admin HieuStore:
                       </span>
-                      {item.reply || "Cảm ơn bạn đã góp ý. Chúng tôi đã tiếp nhận và đang xử lý yêu cầu của bạn!"}
+                      {item.replyMessage}
                     </div>
                   )}
                 </div>

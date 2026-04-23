@@ -8,5 +8,7 @@
         public string Subject { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
         public bool IsRead { get; set; } = false; // Admin đã đọc chưa
+        public bool IsReplied { get; set; } = false;
+        public string? ReplyMessage { get; set; }
     }
 }

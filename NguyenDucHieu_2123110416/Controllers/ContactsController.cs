@@ -54,5 +54,37 @@ namespace NguyenDucHieu_2123110416.Controllers
                                           .ToListAsync();
             return Ok(myHistory);
         }
+        // ====================================================
+        // 💡 API TRẢ LỜI LIÊN HỆ CỦA KHÁCH HÀNG
+        // ====================================================
+        [HttpPost("{id}/reply")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ReplyContact(int id, [FromBody] ReplyContactDto request)
+        {
+            var contact = await _context.Contacts.FindAsync(id);
+            if (contact == null)
+            {
+                return NotFound(new { error = "Không tìm thấy thư liên hệ này!" });
+            }
+
+            if (string.IsNullOrEmpty(request.ReplyMessage))
+            {
+                return BadRequest(new { error = "Sếp chưa nhập nội dung trả lời kìa!" });
+            }
+
+            contact.ReplyMessage = request.ReplyMessage;
+            contact.IsReplied = true;
+            contact.UpdatedAt = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Đã gửi câu trả lời cho khách thành công! ✨" });
+        }
+    }
+
+    // 💡 DTO ĐỂ HỨNG DỮ LIỆU TRẢ LỜI TỪ FRONTEND (Nhớ để ngoài class ContactsController nha)
+    public class ReplyContactDto
+    {
+        public string ReplyMessage { get; set; } = string.Empty;
     }
 }
